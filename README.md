@@ -7,6 +7,8 @@
 
 ## Responsable
 
+[@alxgr-08](https://github.com/alxgr-08) — Frontend. Ver [INTEGRANTE.md](INTEGRANTE.md).
+
 Integrante a cargo del **frontend**. Trabaja contra los contratos REST
 documentados en el README de cada microservicio (y en su Swagger-UI), sin
 depender del avance interno de cada API.
