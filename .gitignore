@@ -1,0 +1,40 @@
+# Dependencias
+node_modules/
+jspm_packages/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Variables de entorno (NUNCA subir credenciales)
+.env
+.env.local
+.env.*.local
+
+# Build / coverage
+dist/
+build/
+coverage/
+.nyc_output/
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+
+# Datos generados (carga masiva)
+*.csv
+data/
+
+# Vite
+.vite/
+dist-ssr/
+*.local
+
+# Amplify
+.amplify-hosting/
+amplify/
