@@ -1,7 +1,8 @@
 # web-condominio
 
 **SPA** del Sistema de Administracion de Condominios. Se despliega en
-**AWS Amplify** y consume los 5 microservicios a traves del **API Gateway**.
+**AWS Amplify** y consume los 5 microservicios a traves del **balanceador** que
+reparte entre las 2 VM de produccion.
 
 > CS2032 Cloud Computing - UTEC | Proyecto: Sistema de Administracion de Condominios
 
@@ -23,12 +24,13 @@ ver la ficha consolidada de un residente y los tableros analiticos.
 web-condominio (Amplify)
         │
         ▼
-   API Gateway
-   ├──> ms-residentes      (8001)
-   ├──> ms-pagos           (8002)
-   ├──> ms-incidencias     (8003)
-   ├──> ms-ficha-residente (8004)
-   └──> ms-analitico       (8005)
+   Balanceador ──> VM produccion 1 ┐
+        │          VM produccion 2 ┘ (gemelas)
+        ├──> ms-residentes      :9001   (login / register)
+        ├──> ms-pagos           :9002
+        ├──> ms-incidencias     :9003
+        ├──> ms-ficha-residente :9004
+        └──> ms-analitico       :9005
 ```
 
 ## Stack
@@ -44,16 +46,17 @@ web-condominio (Amplify)
 
 ## Puerto asignado
 
-**5173** (servidor de desarrollo de Vite)
+**5173**, solo para el servidor de desarrollo de Vite. En produccion la SPA vive
+en Amplify, sin puerto propio.
 
-| Microservicio       | Puerto |
-|---------------------|--------|
-| ms-residentes       | 8001   |
-| ms-pagos            | 8002   |
-| ms-incidencias      | 8003   |
-| ms-ficha-residente  | 8004   |
-| ms-analitico        | 8005   |
-| web-condominio (dev)| **5173** |
+| Microservicio | Publicado | Interno |
+|---------------|-----------|---------|
+| ms-residentes | 9001      | 8000    |
+| ms-pagos      | 9002      | 8080    |
+| ms-incidencias| 9003      | 3003    |
+| ms-ficha-residente | 9004 | 8004    |
+| ms-analitico  | 9005      | 8005    |
+| web-condominio (dev) | **5173** | — |
 
 ## Microservicios consumidos
 
@@ -62,25 +65,32 @@ integran desde el frontend (dos por API):
 
 | Microservicio | Endpoints consumidos | Pantalla |
 |---------------|----------------------|----------|
+| `ms-residentes` | `POST /auth/register`, `POST /auth/login` | **Registro y login** |
 | `ms-residentes` | `GET /residentes`, `GET /residentes/{id}` | Directorio de residentes |
 | `ms-pagos` | `GET /cuotas`, `GET /pagos` | Cuotas y pagos |
 | `ms-incidencias` | `GET /incidencias`, `GET /reservas` | Incidencias y reservas |
 | `ms-ficha-residente` | `GET /ficha/{residente_id}`, `GET /ficha/unidad/{unidad_id}` | Ficha del residente |
 | `ms-analitico` | `GET /analitica/morosidad-por-edificio`, `GET /analitica/recaudacion-mensual` | Tablero analitico |
+| `ms-analitico` | `GET /analitica/prediccion-area-comun` | Area comun mas visitada el proximo mes |
 
 Un cliente por microservicio en `src/api/`.
 
 ## Paginas planificadas
 
-| Ruta | Pantalla |
-|------|----------|
-| `/` | Tablero general |
-| `/residentes` | Directorio de residentes y unidades |
-| `/residentes/:id` | Ficha consolidada (ms-ficha-residente) |
-| `/pagos` | Cuotas emitidas y pagos registrados |
-| `/incidencias` | Incidencias y su seguimiento |
-| `/reservas` | Reservas de areas comunes |
-| `/analitica` | Graficos sobre los datos de Athena |
+| Ruta | Pantalla | Avance 50% |
+|------|----------|------------|
+| `/login` | Inicio de sesion contra `POST /auth/login` | **si** |
+| `/register` | Registro de cuenta contra `POST /auth/register` | **si** |
+| `/` | Dashboard con datos reales de `ms-residentes` | **si** |
+| `/residentes` | Directorio de residentes y unidades | despues |
+| `/residentes/:id` | Ficha consolidada (ms-ficha-residente) | despues |
+| `/pagos` | Cuotas emitidas y pagos registrados | despues |
+| `/incidencias` | Incidencias y su seguimiento | despues |
+| `/reservas` | Reservas de areas comunes | despues |
+| `/analitica` | Graficos sobre los datos de Athena | despues |
+
+Para el avance del 50% el ACL pidio **login, register y el dashboard desplegados
+en Amplify**, no corriendo en local.
 
 ## Variables de entorno
 
@@ -92,12 +102,13 @@ Copiar [.env.example](.env.example) a `.env` y completar.
 | Variable | Descripcion | Ejemplo |
 |----------|-------------|---------|
 | `VITE_APP_NAME` | Nombre de la app | `web-condominio` |
-| `VITE_API_GATEWAY_URL` | URL base del API Gateway | `https://xxxx.execute-api.us-east-1.amazonaws.com/dev` |
-| `VITE_API_RESIDENTES` | Ruta de ms-residentes en el gateway | `/residentes` |
-| `VITE_API_PAGOS` | Ruta de ms-pagos | `/pagos` |
-| `VITE_API_INCIDENCIAS` | Ruta de ms-incidencias | `/incidencias` |
-| `VITE_API_FICHA` | Ruta de ms-ficha-residente | `/ficha` |
-| `VITE_API_ANALITICO` | Ruta de ms-analitico | `/analitico` |
+| `VITE_API_BASE_URL` | URL del balanceador de las VM de produccion | `http://<ip-balanceador>` |
+| `VITE_PORT_RESIDENTES` | Puerto publicado de ms-residentes | `9001` |
+| `VITE_PORT_PAGOS` | Puerto publicado de ms-pagos | `9002` |
+| `VITE_PORT_INCIDENCIAS` | Puerto publicado de ms-incidencias | `9003` |
+| `VITE_PORT_FICHA` | Puerto publicado de ms-ficha-residente | `9004` |
+| `VITE_PORT_ANALITICO` | Puerto publicado de ms-analitico | `9005` |
+| `VITE_TOKEN_STORAGE_KEY` | Clave del token de sesion en el navegador | `condominio_token` |
 
 En Amplify, las mismas variables se cargan en
 **App settings > Environment variables**.
@@ -143,6 +154,9 @@ src/
 ├── App.jsx       # componente raiz (stub)
 ├── api/          # un cliente por microservicio
 ├── pages/        # una carpeta por pantalla
+│   ├── Login/      # avance 50%
+│   ├── Register/   # avance 50%
+│   └── Dashboard/  # avance 50%
 ├── components/   # componentes reutilizables
 ├── hooks/        # hooks de datos
 └── styles/       # estilos
