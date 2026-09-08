@@ -26,7 +26,8 @@ web-condominio (Amplify)
         ▼
    Balanceador ──> VM produccion 1 ┐
         │          VM produccion 2 ┘ (gemelas)
-        ├──> ms-residentes      :9001   (login / register)
+        ├──> ms-usuarios        :9006   (login / register)
+        ├──> ms-residentes      :9001
         ├──> ms-pagos           :9002
         ├──> ms-incidencias     :9003
         ├──> ms-ficha-residente :9004
@@ -56,16 +57,17 @@ en Amplify, sin puerto propio.
 | ms-incidencias| 9003      | 3003    |
 | ms-ficha-residente | 9004 | 8004    |
 | ms-analitico  | 9005      | 8005    |
+| ms-usuarios   | 9006      | 8000    |
 | web-condominio (dev) | **5173** | — |
 
 ## Microservicios consumidos
 
-La SPA consume **los 5** microservicios. Estos son los endpoints que se
+La SPA consume **los 6** microservicios. Estos son los endpoints que se
 integran desde el frontend (dos por API):
 
 | Microservicio | Endpoints consumidos | Pantalla |
 |---------------|----------------------|----------|
-| `ms-residentes` | `POST /auth/register`, `POST /auth/login` | **Registro y login** |
+| `ms-usuarios` | `POST /auth/register`, `POST /auth/login` | **Registro y login** |
 | `ms-residentes` | `GET /residentes`, `GET /residentes/{id}` | Directorio de residentes |
 | `ms-pagos` | `GET /cuotas`, `GET /pagos` | Cuotas y pagos |
 | `ms-incidencias` | `GET /incidencias`, `GET /reservas` | Incidencias y reservas |
@@ -79,8 +81,8 @@ Un cliente por microservicio en `src/api/`.
 
 | Ruta | Pantalla | Avance 50% |
 |------|----------|------------|
-| `/login` | Inicio de sesion contra `POST /auth/login` | **si** |
-| `/register` | Registro de cuenta contra `POST /auth/register` | **si** |
+| `/login` | Inicio de sesion contra `ms-usuarios` (9006) | **si** |
+| `/register` | Registro de cuenta contra `ms-usuarios` (9006) | **si** |
 | `/` | Dashboard con datos reales de `ms-residentes` | **si** |
 | `/residentes` | Directorio de residentes y unidades | despues |
 | `/residentes/:id` | Ficha consolidada (ms-ficha-residente) | despues |
@@ -108,6 +110,7 @@ Copiar [.env.example](.env.example) a `.env` y completar.
 | `VITE_PORT_INCIDENCIAS` | Puerto publicado de ms-incidencias | `9003` |
 | `VITE_PORT_FICHA` | Puerto publicado de ms-ficha-residente | `9004` |
 | `VITE_PORT_ANALITICO` | Puerto publicado de ms-analitico | `9005` |
+| `VITE_PORT_USUARIOS` | Puerto publicado de ms-usuarios (login) | `9006` |
 | `VITE_TOKEN_STORAGE_KEY` | Clave del token de sesion en el navegador | `condominio_token` |
 
 En Amplify, las mismas variables se cargan en
