@@ -1,7 +1,7 @@
 {
-  "name": "web-condominio",
+  "name": "condominios-net",
   "version": "0.1.0",
-  "description": "SPA del Sistema de Administracion de Condominios (React + Vite)",
+  "description": "condominios.net - SPA del Sistema de Administracion de Condominios (React + Vite)",
   "private": true,
   "type": "module",
   "scripts": {

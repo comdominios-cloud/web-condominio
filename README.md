@@ -1,4 +1,4 @@
-# web-condominio
+# condominios.net (web-condominio)
 
 **SPA** del Sistema de Administracion de Condominios. Se despliega en
 **AWS Amplify** y consume los 5 microservicios a traves del **balanceador** que
@@ -77,19 +77,22 @@ integran desde el frontend (dos por API):
 
 Un cliente por microservicio en `src/api/`.
 
-## Paginas planificadas
+## Paginas
 
-| Ruta | Pantalla | Avance 50% |
-|------|----------|------------|
-| `/login` | Inicio de sesion contra `ms-usuarios` (9006) | **si** |
-| `/register` | Registro de cuenta contra `ms-usuarios` (9006) | **si** |
-| `/` | Dashboard con datos reales de `ms-residentes` | **si** |
-| `/residentes` | Directorio de residentes y unidades | despues |
-| `/residentes/:id` | Ficha consolidada (ms-ficha-residente) | despues |
-| `/pagos` | Cuotas emitidas y pagos registrados | despues |
-| `/incidencias` | Incidencias y su seguimiento | despues |
-| `/reservas` | Reservas de areas comunes | despues |
-| `/analitica` | Graficos sobre los datos de Athena | despues |
+| Ruta | Pantalla | Estado |
+|------|----------|--------|
+| `/login` | Inicio de sesion contra `ms-usuarios` (9006) | implementada |
+| `/register` | Registro de cuenta contra `ms-usuarios` (9006) | implementada |
+| `/` | Dashboard con datos reales de `ms-residentes` | implementada |
+| `/residentes` | Directorio de residentes y unidades | implementada |
+| `/residentes/:id` | Ficha consolidada (`ms-ficha-residente`) | implementada |
+| `/pagos` | Cuotas emitidas y pagos registrados | implementada |
+| `/incidencias` | Incidencias y su seguimiento | implementada |
+| `/reservas` | Reservas de areas comunes | implementada |
+| `/analitica` | Morosidad, recaudacion y prediccion de area comun | implementada |
+
+Las rutas distintas de `/login` y `/register` estan protegidas: sin token en el
+navegador la SPA redirige al login.
 
 Para el avance del 50% el ACL pidio **login, register y el dashboard desplegados
 en Amplify**, no corriendo en local.
@@ -153,20 +156,50 @@ Disponible en `http://localhost:8080`.
 
 ```
 src/
-├── main.jsx      # montaje de React (stub)
-├── App.jsx       # componente raiz (stub)
-├── api/          # un cliente por microservicio
-├── pages/        # una carpeta por pantalla
-│   ├── Login/      # avance 50%
-│   ├── Register/   # avance 50%
-│   └── Dashboard/  # avance 50%
-├── components/   # componentes reutilizables
-├── hooks/        # hooks de datos
-└── styles/       # estilos
+├── main.jsx
+├── App.jsx
+├── api/
+│   ├── config.js
+│   ├── http.js
+│   ├── usuarios.js
+│   ├── residentes.js
+│   ├── pagos.js
+│   ├── incidencias.js
+│   ├── ficha.js
+│   └── analitico.js
+├── auth/
+│   └── AuthContext.jsx
+├── components/
+├── hooks/
+│   └── useApi.js
+├── pages/
+│   ├── Login/
+│   ├── Register/
+│   ├── Dashboard/
+│   ├── Residentes/
+│   ├── Pagos/
+│   ├── Incidencias/
+│   ├── Reservas/
+│   └── Analitica/
+├── styles/
+│   └── global.css
+└── utils/
+    └── format.js
 public/
-amplify.yml       # build spec de AWS Amplify
+amplify.yml
 ```
+
+## Sesion
+
+`POST /auth/login` devuelve el token, que se guarda en `localStorage` bajo la
+clave de `VITE_TOKEN_STORAGE_KEY`. Cada peticion posterior lo envia en la
+cabecera `Authorization: Bearer <token>`.
+
+Los clientes toleran distintas formas de respuesta (`[]`, `{ items: [] }`,
+`{ data: [] }`) y distintos nombres de campo, de modo que la SPA no se rompe
+mientras cada microservicio termina de fijar su contrato.
 
 ## Estado
 
-Andamiaje inicial. Sin pantallas ni llamadas a las APIs implementadas.
+Pantallas implementadas y consumiendo los 6 microservicios. Falta conectar el
+repositorio a AWS Amplify y apuntar `VITE_API_BASE_URL` al balanceador.
