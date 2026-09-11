@@ -2,13 +2,15 @@ import { request } from './http.js';
 
 const SERVICE = 'usuarios';
 
-export function registrar({ nombre, email, password, rol }) {
+export function registrar({ email, password }) {
   return request(SERVICE, '/auth/register', {
     method: 'POST',
     auth: false,
-    body: { nombre, email, password, rol },
+    body: { email: email.trim().toLowerCase(), password },
   });
 }
+
+export const miCuenta = () => request(SERVICE, '/auth/me');
 
 export function iniciarSesion({ email, password }) {
   return request(SERVICE, '/auth/login', {

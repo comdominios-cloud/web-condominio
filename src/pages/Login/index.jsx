@@ -25,7 +25,7 @@ export default function Login() {
       await login(form);
       navigate(location.state?.from || '/', { replace: true });
     } catch (err) {
-      setError(err.message || 'No se pudo iniciar sesion.');
+      setError(err.message || 'No se pudo iniciar sesión.');
     } finally {
       setEnviando(false);
     }
@@ -45,8 +45,8 @@ export default function Login() {
       />
 
       <section className="auth-panel">
-        <form className="auth-form" onSubmit={enviar} noValidate>
-          <h1>Iniciar sesion</h1>
+        <form className="auth-form" onSubmit={enviar}>
+          <h1>Iniciar sesión</h1>
           <p>Ingresa con la cuenta que registraste en tu condominio.</p>
 
           <hr className="auth-sep" />
@@ -58,7 +58,7 @@ export default function Login() {
           ) : null}
 
           <div className="field">
-            <label htmlFor="email">Correo electronico</label>
+            <label htmlFor="email">Correo electrónico</label>
             <input
               id="email"
               className="input"
@@ -72,7 +72,7 @@ export default function Login() {
           </div>
 
           <div className="field">
-            <label htmlFor="password">Contrasena</label>
+            <label htmlFor="password">Contraseña</label>
             <input
               id="password"
               className="input"
@@ -96,7 +96,7 @@ export default function Login() {
           </button>
 
           <p className="auth-switch">
-            ¿No tienes cuenta? <Link to="/register">Registrate aqui</Link>
+            ¿No tienes cuenta? <Link to="/register">Regístrate aquí</Link>
           </p>
         </form>
       </section>

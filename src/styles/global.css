@@ -692,3 +692,10 @@ table.table tbody tr:hover td { background: #FCFCFD; }
   .topbar-sub { display: none; }
   .chart-row { grid-template-columns: 110px 1fr 72px; }
 }
+
+/* Forms share the responsive grid used by the resident portal. */
+.grid > .field + .field { margin-top: 0; }
+label.field { font-size: 13px; font-weight: 600; }
+.grid--2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.highlight h2 { color: white; }
+.page > .alert { margin-bottom: 18px; }

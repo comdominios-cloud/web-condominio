@@ -33,6 +33,7 @@ data/
 # Vite
 .vite/
 dist-ssr/
+tests/artifacts/
 *.local
 
 # Amplify

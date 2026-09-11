@@ -21,6 +21,8 @@ export function useApi(fetcher, deps = [], options = {}) {
   }, []);
 
   useEffect(() => {
+    let active = true;
+    setData(initialData);
     if (!enabled) {
       setLoading(false);
       return;
@@ -32,14 +34,17 @@ export function useApi(fetcher, deps = [], options = {}) {
     fetcherRef
       .current()
       .then((result) => {
-        if (mountedRef.current) setData(result);
+        if (active && mountedRef.current) setData(result);
       })
       .catch((err) => {
-        if (mountedRef.current) setError(err);
+        if (active && mountedRef.current) setError(err);
       })
       .finally(() => {
-        if (mountedRef.current) setLoading(false);
+        if (active && mountedRef.current) setLoading(false);
       });
+    return () => {
+      active = false;
+    };
   }, [enabled, nonce, ...deps]);
 
   const reload = useCallback(() => setNonce((value) => value + 1), []);

@@ -1,23 +1,32 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { listarResidentes, obtenerResidente } from '../../api/residentes.js';
+import { listarResidentes, obtenerResidente, listarUnidades } from '../../api/residentes.js';
 import { useApi } from '../../hooks/useApi.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import StatCard from '../../components/StatCard.jsx';
 import Badge from '../../components/Badge.jsx';
 import { AsyncSection } from '../../components/States.jsx';
 import { IconBuilding, IconCheck, IconRefresh, IconUsers } from '../../components/Icons.jsx';
+import { fullName, unitLabel } from '../../utils/domain.js';
 import { date, number, pick, text } from '../../utils/format.js';
 
-function resumen(residentes) {
+function resumen(residentes, catalogo) {
   const unidades = new Set();
   const edificios = new Set();
   let activos = 0;
 
   residentes.forEach((residente) => {
-    const unidad = pick(residente, ['unidad', 'unidad_id', 'unidadId', 'departamento', 'numero_unidad']);
-    const edificio = pick(residente, ['edificio', 'edificio_id', 'torre', 'bloque']);
-    const estado = String(pick(residente, ['estado', 'status'], 'activo')).toLowerCase();
+    const unidad = pick(residente, [
+      'unidad',
+      'unidad_id',
+      'unidadId',
+      'departamento',
+      'numero_unidad',
+    ]);
+    const edificio =
+      catalogo.find((u) => String(u.id) === String(residente.unidad_id))?.edificio_id ||
+      pick(residente, ['edificio', 'edificio_id', 'torre', 'bloque']);
+    const estado = residente.activo === false ? 'inactivo' : 'activo';
 
     if (unidad) unidades.add(String(unidad));
     if (edificio) edificios.add(String(edificio));
@@ -37,9 +46,13 @@ export default function Dashboard() {
 
   const lista = useApi(() => listarResidentes(), [], { initialData: [] });
 
+  const catalogo = useApi(listarUnidades, [], { initialData: [] });
   const residentes = lista.data || [];
 
-  const stats = useMemo(() => resumen(residentes), [residentes]);
+  const stats = useMemo(
+    () => resumen(residentes, catalogo.data || []),
+    [residentes, catalogo.data],
+  );
 
   const recientes = residentes.slice(0, 6);
 
@@ -52,8 +65,8 @@ export default function Dashboard() {
 
       return obtenerResidente(id);
     },
-    [residentes.length],
-    { enabled: residentes.length > 0 }
+    [residentes],
+    { enabled: residentes.length > 0 },
   );
 
   const destacado = detalle.data;
@@ -63,13 +76,18 @@ export default function Dashboard() {
       <div className="page-head">
         <div>
           <h1>Hola {user?.nombre?.split(' ')[0] || 'vecino'} 👋</h1>
-          <p>
-            Este es el estado actual de tu comunidad. Los indicadores se calculan con la informacion
-            que expone <strong>ms-residentes</strong> a traves del balanceador.
-          </p>
+          <p>Resumen de las personas inscritas y sus unidades.</p>
         </div>
 
-        <button type="button" className="btn btn--ghost btn--sm" onClick={lista.reload}>
+        <button
+          type="button"
+          className="btn btn--ghost btn--sm"
+          onClick={() => {
+            lista.reload();
+            catalogo.reload();
+            detalle.reload();
+          }}
+        >
           <IconRefresh />
           Actualizar
         </button>
@@ -95,7 +113,7 @@ export default function Dashboard() {
         <StatCard
           label="Edificios"
           value={stats.edificios ? number(stats.edificios) : '—'}
-          help="Torres registradas en la comunidad"
+          help="Edificios con residentes registrados"
           tone="yellow"
           icon={<IconBuilding />}
           loading={lista.loading}
@@ -103,7 +121,7 @@ export default function Dashboard() {
         <StatCard
           label="Residentes activos"
           value={number(stats.activos)}
-          help="Con estado activo en el padron"
+          help="Con estado activo en el padrón"
           tone="green"
           icon={<IconCheck width={18} height={18} />}
           loading={lista.loading}
@@ -114,8 +132,8 @@ export default function Dashboard() {
         <section className="card">
           <div className="card-head">
             <div>
-              <h2>Ultimos residentes</h2>
-              <p style={{ fontSize: 13.5, color: 'var(--muted)' }}>GET /residentes · ms-residentes</p>
+              <h2>Residentes del padrón</h2>
+              <p style={{ fontSize: 13.5, color: 'var(--muted)' }}>Personas registradas</p>
             </div>
             <Link className="btn btn--ghost btn--sm" to="/residentes">
               Ver todo
@@ -141,25 +159,31 @@ export default function Dashboard() {
                 </thead>
                 <tbody>
                   {recientes.map((residente, index) => {
-                    const id = pick(residente, ['id', 'residente_id', 'residenteId', 'uuid', '_id'], index);
+                    const id = pick(
+                      residente,
+                      ['id', 'residente_id', 'residenteId', 'uuid', '_id'],
+                      index,
+                    );
 
                     return (
                       <tr key={id}>
                         <td>
                           <Link className="cell-strong" to={`/residentes/${id}`}>
-                            {text(
-                              pick(residente, ['nombre', 'nombres', 'nombre_completo', 'name', 'full_name'])
-                            )}
+                            {fullName(residente)}
                           </Link>
                           <div className="cell-muted" style={{ fontSize: 12.5 }}>
                             {text(pick(residente, ['email', 'correo']), 'sin correo')}
                           </div>
                         </td>
                         <td className="cell-num">
-                          {text(pick(residente, ['unidad', 'unidad_id', 'departamento', 'numero_unidad']))}
+                          {unitLabel(
+                            (catalogo.data || []).find(
+                              (u) => String(u.id) === String(residente.unidad_id),
+                            ) || residente.unidad_id,
+                          )}
                         </td>
                         <td>
-                          <Badge value={pick(residente, ['estado', 'status'], 'Activo')} />
+                          <Badge value={residente.activo === false ? 'Inactivo' : 'Activo'} />
                         </td>
                       </tr>
                     );
@@ -172,22 +196,22 @@ export default function Dashboard() {
 
         <div className="stack">
           <div className="highlight">
-            <h3>Ficha consolidada</h3>
-            <p>
-              Cada residente enlaza con <strong>ms-ficha-residente</strong>, que integra su unidad,
-              cuotas, incidencias y reservas en una sola vista.
-            </p>
-            <div className="highlight-value">{number(stats.total)}</div>
-            <p style={{ fontSize: 13.5 }}>fichas disponibles para consultar</p>
+            <h3>Administración del condominio</h3>
+            <p>Completa el padrón y registra los movimientos de las unidades.</p>
+            <div className="toolbar" style={{ marginTop: 16 }}>
+              <Link className="btn btn--ghost" to="/residentes">
+                Gestionar residentes
+              </Link>
+              <Link className="btn btn--ghost" to="/pagos">
+                Gestionar cuotas y pagos
+              </Link>
+            </div>
           </div>
-
           <section className="card">
             <div className="card-head">
               <div>
                 <h2>Detalle del residente</h2>
-                <p style={{ fontSize: 13.5, color: 'var(--muted)' }}>
-                  GET /residentes/{'{id}'} · ms-residentes
-                </p>
+                <p style={{ fontSize: 13.5, color: 'var(--muted)' }}>Datos de contacto y unidad</p>
               </div>
             </div>
 
@@ -202,14 +226,12 @@ export default function Dashboard() {
                 <div className="detail-grid">
                   <div className="detail-item">
                     <div className="detail-label">Nombre</div>
-                    <div className="detail-value">
-                      {text(pick(destacado, ['nombre', 'nombres', 'nombre_completo', 'name']))}
-                    </div>
+                    <div className="detail-value">{fullName(destacado)}</div>
                   </div>
                   <div className="detail-item">
                     <div className="detail-label">Unidad</div>
                     <div className="detail-value">
-                      {text(pick(destacado, ['unidad', 'unidad_id', 'departamento']))}
+                      {unitLabel(destacado.unidad || destacado.unidad_id)}
                     </div>
                   </div>
                   <div className="detail-item">
@@ -219,7 +241,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div className="detail-item">
-                    <div className="detail-label">Telefono</div>
+                    <div className="detail-label">Teléfono</div>
                     <div className="detail-value">
                       {text(pick(destacado, ['telefono', 'celular', 'phone']))}
                     </div>
@@ -227,19 +249,26 @@ export default function Dashboard() {
                   <div className="detail-item">
                     <div className="detail-label">Ingreso</div>
                     <div className="detail-value">
-                      {date(pick(destacado, ['fecha_ingreso', 'created_at', 'fecha_registro']))}
+                      {date(
+                        pick(destacado, [
+                          'creado_en',
+                          'fecha_ingreso',
+                          'created_at',
+                          'fecha_registro',
+                        ]),
+                      )}
                     </div>
                   </div>
                   <div className="detail-item">
                     <div className="detail-label">Estado</div>
                     <div className="detail-value">
-                      <Badge value={pick(destacado, ['estado', 'status'], 'Activo')} />
+                      <Badge value={destacado.activo === false ? 'Inactivo' : 'Activo'} />
                     </div>
                   </div>
                 </div>
               ) : (
                 <p className="cell-muted">
-                  Sin datos para mostrar. Este bloque consume el segundo metodo REST de ms-residentes.
+                  Selecciona un residente del directorio para consultar su información.
                 </p>
               )}
             </div>

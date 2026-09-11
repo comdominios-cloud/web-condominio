@@ -49,8 +49,7 @@ async function parseBody(response) {
 
 function messageFrom(body, response) {
   if (body && typeof body === 'object') {
-    const candidate =
-      body.message || body.detail || body.error || body.msg || body.mensaje;
+    const candidate = body.message || body.detail || body.error || body.msg || body.mensaje;
 
     if (typeof candidate === 'string' && candidate.trim()) return candidate;
 
@@ -106,7 +105,7 @@ export async function request(service, path, options = {}) {
 
     throw new ApiError(
       `No se pudo contactar al microservicio ${service}. Revisa el balanceador y el puerto configurado.`,
-      0
+      0,
     );
   }
 
@@ -116,6 +115,13 @@ export async function request(service, path, options = {}) {
 
   if (!response.ok) {
     throw new ApiError(messageFrom(payload, response), response.status, payload);
+  }
+
+  if (typeof payload === 'string') {
+    throw new ApiError(
+      'El servicio devolvió una respuesta no válida. Intenta nuevamente o contacta a administración.',
+      response.status,
+    );
   }
 
   return payload;

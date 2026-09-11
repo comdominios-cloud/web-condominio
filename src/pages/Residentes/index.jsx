@@ -1,22 +1,29 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { listarResidentes } from '../../api/residentes.js';
+import { listarResidentes, listarUnidades } from '../../api/residentes.js';
 import { useApi } from '../../hooks/useApi.js';
 import DataTable from '../../components/DataTable.jsx';
 import Badge from '../../components/Badge.jsx';
 import { IconRefresh, IconSearch } from '../../components/Icons.jsx';
+import ResidentForm from '../../components/ResidentForm.jsx';
+import { fullName, unitLabel } from '../../utils/domain.js';
 import { matches, number, pick, text } from '../../utils/format.js';
 
 export default function Residentes() {
-  const { data, loading, error, reload } = useApi(() => listarResidentes(), [], { initialData: [] });
+  const { data, loading, error, reload } = useApi(() => listarResidentes(), [], {
+    initialData: [],
+  });
 
+  const catalogo = useApi(listarUnidades, [], { initialData: [] });
+  const [creating, setCreating] = useState(false);
+  const [notice, setNotice] = useState('');
   const [filtro, setFiltro] = useState('');
 
   const residentes = data || [];
 
   const visibles = useMemo(
     () => residentes.filter((residente) => matches(residente, filtro)),
-    [residentes, filtro]
+    [residentes, filtro],
   );
 
   const columnas = [
@@ -29,7 +36,7 @@ export default function Residentes() {
         return (
           <>
             <Link className="cell-strong" to={`/residentes/${id}`}>
-              {text(pick(row, ['nombre', 'nombres', 'nombre_completo', 'name', 'full_name']))}
+              {fullName(row)}
             </Link>
             <div className="cell-muted" style={{ fontSize: 12.5 }}>
               {text(pick(row, ['email', 'correo']), 'sin correo')}
@@ -48,23 +55,30 @@ export default function Residentes() {
       key: 'unidad',
       header: 'Unidad',
       className: 'cell-num',
-      render: (row) => text(pick(row, ['unidad', 'unidad_id', 'departamento', 'numero_unidad'])),
+      render: (row) =>
+        unitLabel(
+          (catalogo.data || []).find((u) => String(u.id) === String(row.unidad_id)) ||
+            row.unidad_id,
+        ),
     },
     {
       key: 'edificio',
       header: 'Edificio',
-      render: (row) => text(pick(row, ['edificio', 'edificio_id', 'torre', 'bloque'])),
+      render: (row) =>
+        text(
+          (catalogo.data || []).find((u) => String(u.id) === String(row.unidad_id))?.edificio_id,
+        ),
     },
     {
       key: 'telefono',
-      header: 'Telefono',
+      header: 'Teléfono',
       className: 'cell-num',
       render: (row) => text(pick(row, ['telefono', 'celular', 'phone'])),
     },
     {
       key: 'estado',
       header: 'Estado',
-      render: (row) => <Badge value={pick(row, ['estado', 'status'], 'Activo')} />,
+      render: (row) => <Badge value={row.activo === false ? 'Inactivo' : 'Activo'} />,
     },
   ];
 
@@ -74,14 +88,19 @@ export default function Residentes() {
         <div>
           <h1>Directorio de residentes</h1>
           <p>
-            Padron consolidado del condominio. Los datos provienen de <strong>ms-residentes</strong>
-            {' '}(<code>GET /residentes</code>).
+            Directorio de personas inscritas y sus unidades. Las cuentas nuevas aparecen cuando
+            completan su ficha.
           </p>
         </div>
 
         <div className="toolbar">
+          <button className="btn btn--primary" onClick={() => setCreating(true)}>
+            Agregar residente
+          </button>
           <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-            <span style={{ position: 'absolute', left: 12, color: 'var(--muted)', display: 'flex' }}>
+            <span
+              style={{ position: 'absolute', left: 12, color: 'var(--muted)', display: 'flex' }}
+            >
               <IconSearch />
             </span>
             <input
@@ -101,10 +120,27 @@ export default function Residentes() {
         </div>
       </div>
 
+      {notice && (
+        <div className="alert alert--success" role="status">
+          {notice}
+        </div>
+      )}
+      {creating && (
+        <section className="card card-body" style={{ marginBottom: 24 }}>
+          <h2>Agregar residente al padrón</h2>
+          <ResidentForm
+            onCancel={() => setCreating(false)}
+            onSaved={() => {
+              setCreating(false);
+              setNotice('Residente registrado en el padrón.');
+              reload();
+            }}
+          />
+        </section>
+      )}
       <section className="card">
         <div className="card-head">
           <h2>{number(visibles.length)} residentes</h2>
-          <span className="badge badge--orange">ms-residentes · 9001</span>
         </div>
 
         <DataTable

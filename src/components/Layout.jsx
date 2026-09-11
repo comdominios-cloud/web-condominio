@@ -3,6 +3,9 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { isApiConfigured } from '../api/config.js';
 import { initials } from '../utils/format.js';
+import { isAdmin } from '../utils/domain.js';
+import { useResident } from '../auth/ResidentContext.jsx';
+import { fullName } from '../utils/domain.js';
 import Brand from './Brand.jsx';
 import {
   IconAlert,
@@ -17,7 +20,7 @@ import {
 
 const NAV_GROUPS = [
   {
-    label: 'Gestion',
+    label: 'Gestión',
     items: [
       { to: '/', label: 'Dashboard', icon: <IconDashboard />, end: true },
       { to: '/residentes', label: 'Residentes', icon: <IconUsers /> },
@@ -28,12 +31,12 @@ const NAV_GROUPS = [
     label: 'Comunidad',
     items: [
       { to: '/incidencias', label: 'Incidencias', icon: <IconAlert /> },
-      { to: '/reservas', label: 'Areas comunes', icon: <IconCalendar /> },
+      { to: '/reservas', label: 'Áreas comunes', icon: <IconCalendar /> },
     ],
   },
   {
     label: 'Inteligencia',
-    items: [{ to: '/analitica', label: 'Analitica', icon: <IconChart /> }],
+    items: [{ to: '/analitica', label: 'Analítica', icon: <IconChart /> }],
   },
 ];
 
@@ -42,8 +45,8 @@ const TITLES = {
   '/residentes': ['Residentes', 'Directorio de residentes y unidades'],
   '/pagos': ['Cuotas y pagos', 'Emision de cuotas y pagos registrados'],
   '/incidencias': ['Incidencias', 'Reportes y seguimiento de la comunidad'],
-  '/reservas': ['Areas comunes', 'Reservas de espacios compartidos'],
-  '/analitica': ['Analitica', 'Indicadores calculados sobre Athena'],
+  '/reservas': ['Áreas comunes', 'Reservas de espacios compartidos'],
+  '/analitica': ['Analítica', 'Indicadores calculados sobre Athena'],
 };
 
 function currentTitle(pathname) {
@@ -56,6 +59,23 @@ function currentTitle(pathname) {
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  const admin = isAdmin(user);
+  const profile = useResident();
+  const displayName = profile.data ? fullName(profile.data) : user?.nombre || user?.email;
+  const groups = admin
+    ? NAV_GROUPS
+    : [
+        {
+          label: 'Mi hogar',
+          items: [
+            { to: '/', label: 'Mi resumen', icon: <IconDashboard />, end: true },
+            { to: '/mi-perfil', label: 'Mi perfil', icon: <IconUsers /> },
+            { to: '/pagos', label: 'Mis cuotas y pagos', icon: <IconMoney /> },
+            { to: '/incidencias', label: 'Mis incidencias', icon: <IconAlert /> },
+            { to: '/reservas', label: 'Mis reservas', icon: <IconCalendar /> },
+          ],
+        },
+      ];
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -64,7 +84,12 @@ export default function Layout() {
     setOpen(false);
   }, [location.pathname]);
 
-  const [title, subtitle] = currentTitle(location.pathname);
+  const [title, subtitle] = admin
+    ? currentTitle(location.pathname)
+    : [
+        groups[0].items.find((i) => i.to === location.pathname)?.label || 'Mi hogar',
+        'Tu información personal y tu unidad',
+      ];
 
   const salir = () => {
     logout();
@@ -81,7 +106,7 @@ export default function Layout() {
         </div>
 
         <nav className="sidebar-nav">
-          {NAV_GROUPS.map((group) => (
+          {groups.map((group) => (
             <div key={group.label}>
               <div className="sidebar-label">{group.label}</div>
               {group.items.map((item) => (
@@ -102,7 +127,7 @@ export default function Layout() {
         <div className="sidebar-footer">
           <button type="button" className="btn btn--ghost btn--sm btn--block" onClick={salir}>
             <IconLogout />
-            Cerrar sesion
+            Cerrar sesión
           </button>
         </div>
       </aside>
@@ -114,7 +139,7 @@ export default function Layout() {
               type="button"
               className="mobile-toggle"
               onClick={() => setOpen((value) => !value)}
-              aria-label="Abrir menu"
+              aria-label="Abrir menú"
             >
               <IconMenu />
             </button>
@@ -127,20 +152,22 @@ export default function Layout() {
           <div className="topbar-right">
             <div style={{ textAlign: 'right', lineHeight: 1.3 }}>
               <div style={{ fontWeight: 700, color: 'var(--ink)', fontSize: 14 }}>
-                {user?.nombre || 'Usuario'}
+                {displayName || 'Usuario'}
               </div>
-              <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{user?.rol || 'Residente'}</div>
+              <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>
+                {admin ? 'Administrador' : 'Residente'}
+              </div>
             </div>
-            <span className="avatar">{initials(user?.nombre || user?.email)}</span>
+            <span className="avatar">{initials(displayName)}</span>
           </div>
         </header>
 
         {isApiConfigured() ? null : (
           <div style={{ padding: '16px 32px 0' }}>
             <div className="alert alert--info">
-              Falta definir <strong style={{ margin: '0 4px' }}>VITE_API_BASE_URL</strong> con la URL del
-              balanceador. Configurala en el archivo <code>.env</code> o en las variables de entorno de
-              AWS Amplify para que la SPA consuma los microservicios.
+              Falta definir <strong style={{ margin: '0 4px' }}>VITE_API_BASE_URL</strong> con la
+              URL del balanceador. Configurala en el archivo <code>.env</code> o en las variables de
+              entorno de AWS Amplify para que la SPA consuma los microservicios.
             </div>
           </div>
         )}

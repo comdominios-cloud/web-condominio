@@ -3,22 +3,19 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import AuthAside from '../../components/AuthAside.jsx';
 
-const ROLES = ['Residente', 'Administrador', 'Propietario'];
+import { passwordError } from '../../utils/domain.js';
 
 export default function Register() {
-  const { register, login, isAuthenticated } = useAuth();
+  const { register, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    nombre: '',
     email: '',
     password: '',
     confirmacion: '',
-    rol: 'Residente',
   });
 
   const [error, setError] = useState(null);
-  const [aviso, setAviso] = useState(null);
   const [enviando, setEnviando] = useState(false);
 
   if (isAuthenticated) return <Navigate to="/" replace />;
@@ -28,35 +25,23 @@ export default function Register() {
   const enviar = async (event) => {
     event.preventDefault();
     setError(null);
-    setAviso(null);
 
-    if (form.password.length < 6) {
-      setError('La contrasena debe tener al menos 6 caracteres.');
+    if (passwordError(form.password)) {
+      setError(passwordError(form.password));
       return;
     }
 
     if (form.password !== form.confirmacion) {
-      setError('Las contrasenas no coinciden.');
+      setError('Las contraseñas no coinciden.');
       return;
     }
 
     setEnviando(true);
 
     try {
-      await register({
-        nombre: form.nombre,
-        email: form.email,
-        password: form.password,
-        rol: form.rol,
-      });
+      await register({ email: form.email, password: form.password });
 
-      try {
-        await login({ email: form.email, password: form.password });
-        navigate('/', { replace: true });
-        return;
-      } catch {
-        setAviso('Cuenta creada correctamente. Ya puedes iniciar sesion.');
-      }
+      navigate('/mi-perfil', { replace: true });
     } catch (err) {
       setError(err.message || 'No se pudo crear la cuenta.');
     } finally {
@@ -68,17 +53,17 @@ export default function Register() {
     <div className="auth">
       <AuthAside
         claim={['Crea tu cuenta', 'y toma el control']}
-        lead="Registra tu usuario para acceder al panel de administracion de tu condominio y consultar toda la informacion en linea."
+        lead="Crea tu acceso personal y completa tu ficha para consultar la información de tu unidad."
         points={[
-          'Acceso inmediato al panel del condominio',
+          'Tu perfil conectado al padrón de residentes',
           'Historial de cuotas y pagos de tu unidad',
-          'Reporte de incidencias en pocos clics',
-          'Reserva de areas comunes desde cualquier lugar',
+          'Consulta del estado de tus incidencias',
+          'Consulta de tus reservas de áreas comunes',
         ]}
       />
 
       <section className="auth-panel">
-        <form className="auth-form" onSubmit={enviar} noValidate>
+        <form className="auth-form" onSubmit={enviar}>
           <h1>Crear cuenta</h1>
           <p>Completa tus datos para unirte a la plataforma.</p>
 
@@ -90,28 +75,8 @@ export default function Register() {
             </div>
           ) : null}
 
-          {aviso ? (
-            <div className="alert alert--success" style={{ marginBottom: 16 }}>
-              {aviso}
-            </div>
-          ) : null}
-
           <div className="field">
-            <label htmlFor="nombre">Nombre completo</label>
-            <input
-              id="nombre"
-              className="input"
-              type="text"
-              autoComplete="name"
-              placeholder="Ana Torres Vega"
-              value={form.nombre}
-              onChange={cambiar('nombre')}
-              required
-            />
-          </div>
-
-          <div className="field">
-            <label htmlFor="email-registro">Correo electronico</label>
+            <label htmlFor="email-registro">Correo electrónico</label>
             <input
               id="email-registro"
               className="input"
@@ -124,25 +89,21 @@ export default function Register() {
             />
           </div>
 
-          <div className="field">
-            <label htmlFor="rol">Perfil</label>
-            <select id="rol" className="input" value={form.rol} onChange={cambiar('rol')}>
-              {ROLES.map((rol) => (
-                <option key={rol} value={rol}>
-                  {rol}
-                </option>
-              ))}
-            </select>
+          <div className="alert alert--info" style={{ marginBottom: 16 }}>
+            Crearás una cuenta de residente. Después completarás tus datos y tu unidad para aparecer
+            en el padrón. Las cuentas de administración las habilita el responsable del condominio.
           </div>
 
           <div className="field">
-            <label htmlFor="password-registro">Contrasena</label>
+            <label htmlFor="password-registro">Contraseña</label>
             <input
               id="password-registro"
+              minLength={8}
+              maxLength={72}
               className="input"
               type="password"
               autoComplete="new-password"
-              placeholder="Minimo 6 caracteres"
+              placeholder="Mínimo 8 caracteres"
               value={form.password}
               onChange={cambiar('password')}
               required
@@ -150,7 +111,7 @@ export default function Register() {
           </div>
 
           <div className="field">
-            <label htmlFor="confirmacion">Repetir contrasena</label>
+            <label htmlFor="confirmacion">Repetir contraseña</label>
             <input
               id="confirmacion"
               className="input"
@@ -174,7 +135,7 @@ export default function Register() {
           </button>
 
           <p className="auth-switch">
-            ¿Ya tienes cuenta? <Link to="/login">Inicia sesion</Link>
+            ¿Ya tienes cuenta? <Link to="/login">Inicia sesión</Link>
           </p>
         </form>
       </section>

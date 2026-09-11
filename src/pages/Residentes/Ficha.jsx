@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import ResidentForm from '../../components/ResidentForm.jsx';
 import { Link, useParams } from 'react-router-dom';
 import { obtenerResidente } from '../../api/residentes.js';
 import { obtenerFichaResidente } from '../../api/ficha.js';
@@ -5,6 +7,7 @@ import { useApi } from '../../hooks/useApi.js';
 import Badge from '../../components/Badge.jsx';
 import { AsyncSection, ErrorState, Loading } from '../../components/States.jsx';
 import { IconArrowLeft, IconRefresh } from '../../components/Icons.jsx';
+import { fullName, unitLabel } from '../../utils/domain.js';
 import { date, money, pick, text } from '../../utils/format.js';
 
 function Seccion({ titulo, fuente, children }) {
@@ -33,6 +36,8 @@ function listaDe(ficha, claves) {
 
 export default function FichaResidente() {
   const { id } = useParams();
+  const [editing, setEditing] = useState(false);
+  const [notice, setNotice] = useState('');
 
   const residente = useApi(() => obtenerResidente(id), [id]);
   const ficha = useApi(() => obtenerFichaResidente(id), [id]);
@@ -54,11 +59,8 @@ export default function FichaResidente() {
 
       <div className="page-head">
         <div>
-          <h1>{text(pick(base, ['nombre', 'nombres', 'nombre_completo', 'name']), `Residente #${id}`)}</h1>
-          <p>
-            Vista consolidada que integra <strong>ms-residentes</strong> y{' '}
-            <strong>ms-ficha-residente</strong>.
-          </p>
+          <h1>{fullName(base)}</h1>
+          <p>Datos personales, unidad y movimientos disponibles del residente.</p>
         </div>
 
         <button
@@ -74,8 +76,34 @@ export default function FichaResidente() {
         </button>
       </div>
 
+      {notice && (
+        <div className="alert alert--success" role="status">
+          {notice}
+        </div>
+      )}
+      {residente.data && (
+        <div className="toolbar" style={{ marginBottom: 20 }}>
+          <button className="btn btn--primary" onClick={() => setEditing(true)}>
+            Editar datos del residente
+          </button>
+        </div>
+      )}
+      {editing && residente.data && (
+        <section className="card card-body" style={{ marginBottom: 24 }}>
+          <ResidentForm
+            resident={residente.data}
+            email={residente.data.email}
+            onCancel={() => setEditing(false)}
+            onSaved={() => {
+              setEditing(false);
+              setNotice('Datos actualizados.');
+              residente.reload();
+            }}
+          />
+        </section>
+      )}
       <div className="stack">
-        <Seccion titulo="Datos del residente" fuente={`GET /residentes/${id} · ms-residentes`}>
+        <Seccion titulo="Datos del residente">
           <div className="card-body">
             {residente.loading ? (
               <Loading label="Cargando datos del residente..." />
@@ -95,22 +123,24 @@ export default function FichaResidente() {
                 </div>
                 <div className="detail-item">
                   <div className="detail-label">Telefono</div>
-                  <div className="detail-value">{text(pick(base, ['telefono', 'celular', 'phone']))}</div>
-                </div>
-                <div className="detail-item">
-                  <div className="detail-label">Unidad</div>
                   <div className="detail-value">
-                    {text(pick(base, ['unidad', 'unidad_id', 'departamento']))}
+                    {text(pick(base, ['telefono', 'celular', 'phone']))}
                   </div>
                 </div>
                 <div className="detail-item">
+                  <div className="detail-label">Unidad</div>
+                  <div className="detail-value">{unitLabel(base.unidad || base.unidad_id)}</div>
+                </div>
+                <div className="detail-item">
                   <div className="detail-label">Edificio</div>
-                  <div className="detail-value">{text(pick(base, ['edificio', 'torre', 'bloque']))}</div>
+                  <div className="detail-value">
+                    {text(pick(base, ['edificio', 'torre', 'bloque']))}
+                  </div>
                 </div>
                 <div className="detail-item">
                   <div className="detail-label">Estado</div>
                   <div className="detail-value">
-                    <Badge value={pick(base, ['estado', 'status'], 'Activo')} />
+                    <Badge value={base.activo === false ? 'Inactivo' : 'Activo'} />
                   </div>
                 </div>
               </div>
@@ -118,7 +148,7 @@ export default function FichaResidente() {
           </div>
         </Seccion>
 
-        <Seccion titulo="Ficha consolidada" fuente={`GET /ficha/${id} · ms-ficha-residente`}>
+        <Seccion titulo="Ficha consolidada">
           <AsyncSection
             loading={ficha.loading}
             error={ficha.error}
@@ -130,7 +160,7 @@ export default function FichaResidente() {
             }
             onRetry={ficha.reload}
             emptyTitle="Sin informacion consolidada"
-            emptyText="ms-ficha-residente todavia no devuelve cuotas, pagos, incidencias ni reservas para este residente."
+            emptyText="No hay movimientos consolidados disponibles para esta ficha."
           >
             <div className="card-body stack">
               {cuotas.length > 0 ? (
@@ -153,7 +183,9 @@ export default function FichaResidente() {
                               {text(pick(cuota, ['concepto', 'descripcion', 'tipo']))}
                             </td>
                             <td>{text(pick(cuota, ['periodo', 'mes', 'fecha_emision']))}</td>
-                            <td className="cell-num">{money(pick(cuota, ['monto', 'importe', 'total']))}</td>
+                            <td className="cell-num">
+                              {money(pick(cuota, ['monto', 'importe', 'total']))}
+                            </td>
                             <td>
                               <Badge value={pick(cuota, ['estado', 'status'], 'Pendiente')} />
                             </td>
@@ -183,7 +215,9 @@ export default function FichaResidente() {
                           <tr key={index}>
                             <td>{date(pick(pago, ['fecha', 'fecha_pago', 'created_at']))}</td>
                             <td>{text(pick(pago, ['medio', 'metodo', 'medio_pago']))}</td>
-                            <td className="cell-num">{money(pick(pago, ['monto', 'importe', 'total']))}</td>
+                            <td className="cell-num">
+                              {money(pick(pago, ['monto', 'importe', 'total']))}
+                            </td>
                             <td>
                               <Badge value={pick(pago, ['estado', 'status'], 'Registrado')} />
                             </td>
@@ -213,7 +247,9 @@ export default function FichaResidente() {
                             <td className="cell-strong">
                               {text(pick(incidencia, ['titulo', 'descripcion', 'asunto']))}
                             </td>
-                            <td>{date(pick(incidencia, ['fecha', 'created_at', 'fecha_reporte']))}</td>
+                            <td>
+                              {date(pick(incidencia, ['fecha', 'created_at', 'fecha_reporte']))}
+                            </td>
                             <td>
                               <Badge value={pick(incidencia, ['estado', 'status'], 'Abierta')} />
                             </td>

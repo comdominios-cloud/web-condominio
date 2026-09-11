@@ -46,7 +46,9 @@ export function percent(value, digits = 1) {
 export function date(value) {
   if (!value) return '—';
 
-  const parsed = new Date(value);
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(String(value))
+    ? new Date(`${value}T00:00:00`)
+    : new Date(value);
 
   if (Number.isNaN(parsed.getTime())) return String(value);
 
@@ -99,5 +101,7 @@ export function matches(record, term) {
 
   const needle = term.toLowerCase().trim();
 
-  return JSON.stringify(record ?? '').toLowerCase().includes(needle);
+  return JSON.stringify(record ?? '')
+    .toLowerCase()
+    .includes(needle);
 }

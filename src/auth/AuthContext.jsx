@@ -1,6 +1,6 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { TOKEN_STORAGE_KEY, USER_STORAGE_KEY } from '../api/config.js';
-import { iniciarSesion, registrar } from '../api/usuarios.js';
+import { iniciarSesion, registrar, miCuenta } from '../api/usuarios.js';
 
 const AuthContext = createContext(null);
 
@@ -24,14 +24,10 @@ function writeStored(key, value) {
 function extractToken(payload) {
   if (!payload) return null;
 
-  if (typeof payload === 'string') return payload;
+  if (typeof payload === 'string') return null;
 
   const direct =
-    payload.token ||
-    payload.access_token ||
-    payload.accessToken ||
-    payload.jwt ||
-    payload.id_token;
+    payload.token || payload.access_token || payload.accessToken || payload.jwt || payload.id_token;
 
   if (typeof direct === 'string') return direct;
 
@@ -48,7 +44,7 @@ function extractUser(payload, fallbackEmail) {
   const nombre = source.nombre || source.name || source.nombres || email.split('@')[0] || 'Usuario';
   const rol = source.rol || source.role || source.perfil || 'Residente';
 
-  return { email, nombre, rol };
+  return { id: source.id, residente_id: source.residente_id ?? null, email, nombre, rol };
 }
 
 export function AuthProvider({ children }) {
@@ -65,6 +61,41 @@ export function AuthProvider({ children }) {
       return null;
     }
   });
+
+  const [checking, setChecking] = useState(() => Boolean(readStored(TOKEN_STORAGE_KEY)));
+  const [sessionError, setSessionError] = useState(null);
+  const [sessionAttempt, setSessionAttempt] = useState(0);
+  useEffect(() => {
+    if (!token) {
+      setChecking(false);
+      return;
+    }
+    let active = true;
+    setChecking(true);
+    setSessionError(null);
+    miCuenta()
+      .then((payload) => {
+        if (!active) return;
+        const next = extractUser(payload);
+        setUser(next);
+        writeStored(USER_STORAGE_KEY, JSON.stringify(next));
+      })
+      .catch((error) => {
+        if (!active) return;
+        if (error.status === 401 || error.status === 403) {
+          setToken(null);
+          setUser(null);
+          writeStored(TOKEN_STORAGE_KEY, null);
+          writeStored(USER_STORAGE_KEY, null);
+        } else setSessionError(error);
+      })
+      .finally(() => {
+        if (active) setChecking(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [token, sessionAttempt]);
 
   const persist = useCallback((nextToken, nextUser) => {
     setToken(nextToken);
@@ -87,16 +118,39 @@ export function AuthProvider({ children }) {
 
       return nextUser;
     },
-    [persist]
+    [persist],
   );
 
-  const register = useCallback((datos) => registrar(datos), []);
+  const register = useCallback(
+    async (datos) => {
+      const payload = await registrar(datos);
+      const nextToken = extractToken(payload);
+      if (!nextToken)
+        throw new Error(
+          'La cuenta pudo haberse creado, pero no se recibió una sesión válida. Intenta iniciar sesión.',
+        );
+      const nextUser = extractUser(payload, datos.email);
+      persist(nextToken, nextUser);
+      return nextUser;
+    },
+    [persist],
+  );
 
   const logout = useCallback(() => persist(null, null), [persist]);
 
   const value = useMemo(
-    () => ({ token, user, isAuthenticated: Boolean(token), login, register, logout }),
-    [token, user, login, register, logout]
+    () => ({
+      token,
+      user,
+      isAuthenticated: Boolean(token),
+      checking,
+      sessionError,
+      retrySession: () => setSessionAttempt((v) => v + 1),
+      login,
+      register,
+      logout,
+    }),
+    [token, user, checking, sessionError, login, register, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
