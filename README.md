@@ -99,67 +99,80 @@ en Amplify**, no corriendo en local.
 
 ## Conexion con los microservicios
 
-### Por que hay un proxy
+### Por que hace falta CloudFront
 
-Amplify sirve la pagina por **HTTPS** y el balanceador responde por **HTTP**. El
-navegador **bloquea** las peticiones HTTP hechas desde una pagina HTTPS
-(*mixed content*), y eso no se puede evitar desde el codigo.
+Amplify sirve la SPA por **HTTPS** y el balanceador responde solo por **HTTP**.
+Eso choca por dos lados:
 
-La solucion es que el navegador hable siempre con el mismo origen. Todas las
-llamadas salen hacia `/api/<servicio>/<ruta>` y son los **rewrites de Amplify**
-los que las reenvian al balanceador:
+1. El navegador **bloquea** las peticiones HTTP hechas desde una pagina HTTPS
+   (*mixed content*), y no se puede evitar desde el codigo.
+2. Amplify **tampoco acepta** destinos HTTP en sus reglas de reescritura:
+   responde `HTTP URLs cannot be used in custom rules. Use HTTPS instead.`
+
+Tampoco sirve ponerle un certificado al ALB: ACM no emite certificados para
+dominios `amazonaws.com`, y uno autofirmado seria rechazado igual.
+
+La solucion es **CloudFront delante del balanceador**. Entrega un dominio
+`xxxxxxxx.cloudfront.net` con HTTPS valido y gratis, y habla HTTP con el origen:
 
 ```
-navegador ──HTTPS──> Amplify ──HTTP──> ALB:<puerto> ──> microservicio
+navegador ──HTTPS──> CloudFront ──HTTP──> ALB ──> microservicio
 ```
 
-En desarrollo, el servidor de Vite hace exactamente lo mismo con su propio
-proxy, asi que el codigo no cambia entre un entorno y el otro.
+Como el ALB es publico, la distribucion se puede crear en **cualquier** cuenta de
+AWS, no hace falta que sea la que tiene las VM.
 
-### Reglas que hay que cargar en Amplify
+### Como crear la distribucion
 
-En la consola: **App settings > Rewrites and redirects**.
+En la consola de AWS, **CloudFront > Create distribution**:
 
-El ALB enruta **por ruta** sobre el puerto 80 (no hay listener por puerto), asi
-que todos los targets apuntan al mismo host y lo unico que cambia es el prefijo
-que se quita. Las reglas de `/api/` van **antes** que la de la SPA.
+| Campo | Valor |
+|-------|-------|
+| Origin domain | `alb-condominio-678852222.us-east-1.elb.amazonaws.com` |
+| Protocol | **HTTP only** (el ALB no tiene HTTPS) |
+| Viewer protocol policy | Redirect HTTP to HTTPS |
+| Allowed HTTP methods | **GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE** |
+| Cache policy | **CachingDisabled** |
+| Origin request policy | **AllViewer** |
 
-| Source address | Target address | Type |
-|----------------|----------------|------|
-| `/api/residentes/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com/<*>` | 200 (Rewrite) |
-| `/api/usuarios/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com/<*>` | 200 (Rewrite) |
-| `/api/pagos/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com/<*>` | 200 (Rewrite) |
-| `/api/incidencias/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com/<*>` | 200 (Rewrite) |
-| `/api/ficha/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com/<*>` | 200 (Rewrite) |
-| `/api/analitico/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com/<*>` | 200 (Rewrite) |
-| `/<*>` | `/index.html` | 200 (Rewrite) |
+Los tres ultimos no son opcionales:
 
-Como funciona, con un ejemplo: el frontend pide `/api/usuarios/auth/login`, la
-regla le quita el prefijo `/api/usuarios/` y reenvia a
-`http://alb.../auth/login`. El ALB ve la ruta `/auth/*` y la manda a
-`tg-usuarios`. El navegador solo hablo HTTPS con Amplify.
+- Sin los metodos completos, el `POST /auth/login` falla con 403.
+- Sin `CachingDisabled`, CloudFront cachea las respuestas de la API y devuelve
+  datos viejos.
+- Sin `AllViewer`, CloudFront **descarta el header `Authorization`** y todos los
+  endpoints protegidos responden 401 aunque el token sea valido.
 
-Reglas de ruta que hoy tiene el ALB:
-
-| Prioridad | Rutas | Target group |
-|-----------|-------|--------------|
-| 10 | `/residentes*`, `/unidades*`, `/edificios*` | `tg-residentes` |
-| 20 | `/usuarios*`, `/auth*` | `tg-usuarios` |
-
-Los microservicios que todavia no estan desplegados (`pagos`, `incidencias`,
-`ficha`, `analitico`) van a caer en la regla por defecto hasta que
-@Brisseth-raton les agregue la suya.
+La distribucion tarda unos minutos en quedar `Deployed`.
 
 ### Variables de entorno en Amplify
 
 En **App settings > Environment variables**:
 
 ```
-VITE_API_MODE=proxy
+VITE_API_MODE=path
+VITE_API_BASE_URL=https://XXXXXXXX.cloudfront.net
 ```
 
-`VITE_API_BASE_URL` no se usa en produccion con el modo proxy. Si quedo en
-`http://0.0.0.0`, se puede borrar.
+Con esto **no hacen falta reglas de reescritura**: la SPA le pega directo a
+CloudFront por HTTPS. La unica regla que se mantiene es la de la SPA:
+
+| Source | Target | Type |
+|--------|--------|------|
+| `/<*>` | `/index.html` | 200 (Rewrite) |
+
+### Reglas de ruta del ALB
+
+CloudFront reenvia la ruta tal cual, y el balanceador decide a que microservicio
+va segun el path:
+
+| Prioridad | Rutas | Target group |
+|-----------|-------|--------------|
+| 10 | `/residentes*`, `/unidades*`, `/edificios*` | `tg-residentes` |
+| 20 | `/usuarios*`, `/auth*` | `tg-usuarios` |
+
+Los microservicios que todavia no estan desplegados caen en la regla por
+defecto hasta que @Brisseth-raton les agregue la suya.
 
 ### Modo directo
 

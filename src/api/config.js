@@ -22,18 +22,27 @@ export const SERVICE_PORTS = {
 /**
  * Modo de acceso a los microservicios.
  *
- *   'proxy'  (por defecto)  ->  /api/<servicio>/<ruta>
- *   'direct'                ->  http://<host>:<puerto>/<ruta>
+ *   'path'   (por defecto)  ->  <VITE_API_BASE_URL>/<ruta>
+ *   'proxy'                 ->  /api/<servicio>/<ruta>
+ *   'direct'                ->  <VITE_API_BASE_URL>:<puerto>/<ruta>
  *
- * En Amplify hay que usar 'proxy'. La pagina se sirve por HTTPS y el
- * balanceador responde por HTTP: si el navegador ve una peticion HTTP desde
- * una pagina HTTPS la bloquea (mixed content) y no hay forma de evitarlo desde
- * el codigo. Con el proxy, el navegador habla HTTPS con Amplify y Amplify
- * reenvia al balanceador por detras.
+ * PRODUCCION: usar 'path' apuntando a la distribucion de CloudFront.
  *
+ * El balanceador enruta por ruta (/residentes*, /auth*...), no por puerto, y
+ * responde solo por HTTP. Como Amplify sirve la SPA por HTTPS, el navegador
+ * bloquearia esas llamadas (mixed content) y Amplify tampoco acepta destinos
+ * HTTP en sus reglas de reescritura.
+ *
+ * La solucion es CloudFront delante del ALB: entrega un dominio con HTTPS
+ * valido y habla HTTP con el origen. La SPA le pega directo por HTTPS.
+ *
+ *   VITE_API_MODE=path
+ *   VITE_API_BASE_URL=https://xxxxxxxx.cloudfront.net
+ *
+ * 'proxy' queda para el caso de tener un backend HTTPS y querer reescrituras.
  * 'direct' sirve para desarrollo contra microservicios en localhost.
  */
-export const API_MODE = (env.VITE_API_MODE || 'proxy').trim().toLowerCase();
+export const API_MODE = (env.VITE_API_MODE || 'path').trim().toLowerCase();
 
 export const isApiConfigured = () => API_MODE === 'proxy' || RAW_BASE.length > 0;
 
@@ -54,8 +63,13 @@ export function serviceUrl(service, path = '') {
 
   if (!RAW_BASE) {
     throw new Error(
-      'Falta configurar VITE_API_BASE_URL con la URL del balanceador de las VM de produccion.'
+      'Falta configurar VITE_API_BASE_URL con la URL de CloudFront o del balanceador.'
     );
+  }
+
+  if (API_MODE === 'path') {
+    // El balanceador enruta por ruta, asi que la URL va sin puerto.
+    return `${RAW_BASE}${suffix}`;
   }
 
   return `${RAW_BASE}:${port}${suffix}`;
