@@ -99,7 +99,7 @@ en Amplify**, no corriendo en local.
 
 ## Conexion con los microservicios
 
-### Por que hace falta CloudFront
+### Por que hace falta un HTTPS delante del balanceador
 
 Amplify sirve la SPA por **HTTPS** y el balanceador responde solo por **HTTP**.
 Eso choca por dos lados:
@@ -109,41 +109,48 @@ Eso choca por dos lados:
 2. Amplify **tampoco acepta** destinos HTTP en sus reglas de reescritura:
    responde `HTTP URLs cannot be used in custom rules. Use HTTPS instead.`
 
-Tampoco sirve ponerle un certificado al ALB: ACM no emite certificados para
-dominios `amazonaws.com`, y uno autofirmado seria rechazado igual.
+Lo que **no** sirve:
 
-La solucion es **CloudFront delante del balanceador**. Entrega un dominio
-`xxxxxxxx.cloudfront.net` con HTTPS valido y gratis, y habla HTTP con el origen:
+- Ponerle un certificado al ALB: ACM no emite certificados para dominios
+  `amazonaws.com`, y uno autofirmado seria rechazado igual.
+- CloudFront: el rol de AWS Academy **no tiene permisos** sobre ese servicio
+  (`not authorized to perform: cloudfront:ListDistributions`).
+
+La solucion es **API Gateway**, que ademas es uno de los servicios que pide el
+curso. Entrega una URL HTTPS y habla HTTP con el balanceador:
 
 ```
-navegador ──HTTPS──> CloudFront ──HTTP──> ALB ──> microservicio
+navegador ──HTTPS──> API Gateway ──HTTP──> ALB ──> microservicio
 ```
 
-Como el ALB es publico, la distribucion se puede crear en **cualquier** cuenta de
-AWS, no hace falta que sea la que tiene las VM.
+### Como crear el API Gateway
 
-### Como crear la distribucion
+En la consola: **API Gateway > Create API > HTTP API > Build**.
 
-En la consola de AWS, **CloudFront > Create distribution**:
+| Paso | Valor |
+|------|-------|
+| Integration | **HTTP URI** |
+| URL del endpoint | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com/{proxy}` |
+| Method | **ANY** |
+| Route | **ANY** `/{proxy+}` |
+| Stage | **`$default`**, con *Auto-deploy* activado |
 
-| Campo | Valor |
-|-------|-------|
-| Origin domain | `alb-condominio-678852222.us-east-1.elb.amazonaws.com` |
-| Protocol | **HTTP only** (el ALB no tiene HTTPS) |
-| Viewer protocol policy | Redirect HTTP to HTTPS |
-| Allowed HTTP methods | **GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE** |
-| Cache policy | **CachingDisabled** |
-| Origin request policy | **AllViewer** |
+Tres detalles que importan:
 
-Los tres ultimos no son opcionales:
+- **El stage tiene que ser `$default`.** Con un stage con nombre (`dev`, `prod`),
+  ese nombre queda en la ruta y el balanceador recibiria `/dev/residentes` en vez
+  de `/residentes`, que no matchea ninguna de sus reglas.
+- **La ruta tiene que ser `ANY /{proxy+}`**, no `GET /algo`. Asi pasa cualquier
+  metodo y cualquier ruta, que es lo que necesita una API REST completa.
+- **No activar CORS en API Gateway.** Los microservicios ya devuelven sus propias
+  cabeceras CORS; si ademas las agrega el gateway, llegan duplicadas y el
+  navegador rechaza la respuesta.
 
-- Sin los metodos completos, el `POST /auth/login` falla con 403.
-- Sin `CachingDisabled`, CloudFront cachea las respuestas de la API y devuelve
-  datos viejos.
-- Sin `AllViewer`, CloudFront **descarta el header `Authorization`** y todos los
-  endpoints protegidos responden 401 aunque el token sea valido.
+La URL final se ve asi:
 
-La distribucion tarda unos minutos en quedar `Deployed`.
+```
+https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com
+```
 
 ### Variables de entorno en Amplify
 
@@ -151,11 +158,11 @@ En **App settings > Environment variables**:
 
 ```
 VITE_API_MODE=path
-VITE_API_BASE_URL=https://XXXXXXXX.cloudfront.net
+VITE_API_BASE_URL=https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com
 ```
 
-Con esto **no hacen falta reglas de reescritura**: la SPA le pega directo a
-CloudFront por HTTPS. La unica regla que se mantiene es la de la SPA:
+Con esto **no hacen falta reglas de reescritura**: la SPA le pega directo al API
+Gateway por HTTPS. La unica regla que se mantiene es la de la SPA:
 
 | Source | Target | Type |
 |--------|--------|------|
@@ -163,8 +170,8 @@ CloudFront por HTTPS. La unica regla que se mantiene es la de la SPA:
 
 ### Reglas de ruta del ALB
 
-CloudFront reenvia la ruta tal cual, y el balanceador decide a que microservicio
-va segun el path:
+API Gateway reenvia la ruta tal cual, y el balanceador decide a que
+microservicio va segun el path:
 
 | Prioridad | Rutas | Target group |
 |-----------|-------|--------------|

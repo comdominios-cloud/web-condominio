@@ -33,11 +33,12 @@ export const SERVICE_PORTS = {
  * bloquearia esas llamadas (mixed content) y Amplify tampoco acepta destinos
  * HTTP en sus reglas de reescritura.
  *
- * La solucion es CloudFront delante del ALB: entrega un dominio con HTTPS
- * valido y habla HTTP con el origen. La SPA le pega directo por HTTPS.
+ * La solucion es API Gateway delante del ALB: entrega una URL HTTPS y habla
+ * HTTP con el balanceador. La SPA le pega directo por HTTPS.
+ * (CloudFront no es opcion: el rol de AWS Academy no tiene permisos.)
  *
  *   VITE_API_MODE=path
- *   VITE_API_BASE_URL=https://xxxxxxxx.cloudfront.net
+ *   VITE_API_BASE_URL=https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com
  *
  * 'proxy' queda para el caso de tener un backend HTTPS y querer reescrituras.
  * 'direct' sirve para desarrollo contra microservicios en localhost.
@@ -63,7 +64,7 @@ export function serviceUrl(service, path = '') {
 
   if (!RAW_BASE) {
     throw new Error(
-      'Falta configurar VITE_API_BASE_URL con la URL de CloudFront o del balanceador.'
+      'Falta configurar VITE_API_BASE_URL con la URL del API Gateway o del balanceador.'
     );
   }
 
