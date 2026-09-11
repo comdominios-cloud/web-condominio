@@ -97,6 +97,55 @@ navegador la SPA redirige al login.
 Para el avance del 50% el ACL pidio **login, register y el dashboard desplegados
 en Amplify**, no corriendo en local.
 
+## Conexion con los microservicios
+
+### Por que hay un proxy
+
+Amplify sirve la pagina por **HTTPS** y el balanceador responde por **HTTP**. El
+navegador **bloquea** las peticiones HTTP hechas desde una pagina HTTPS
+(*mixed content*), y eso no se puede evitar desde el codigo.
+
+La solucion es que el navegador hable siempre con el mismo origen. Todas las
+llamadas salen hacia `/api/<servicio>/<ruta>` y son los **rewrites de Amplify**
+los que las reenvian al balanceador:
+
+```
+navegador ──HTTPS──> Amplify ──HTTP──> ALB:<puerto> ──> microservicio
+```
+
+En desarrollo, el servidor de Vite hace exactamente lo mismo con su propio
+proxy, asi que el codigo no cambia entre un entorno y el otro.
+
+### Reglas que hay que cargar en Amplify
+
+En la consola: **App settings > Rewrites and redirects**. El orden importa: las
+reglas de `/api/` van **antes** que la de la SPA.
+
+| Source address | Target address | Type |
+|----------------|----------------|------|
+| `/api/residentes/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com:9001/<*>` | 200 (Rewrite) |
+| `/api/pagos/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com:9002/<*>` | 200 (Rewrite) |
+| `/api/incidencias/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com:9003/<*>` | 200 (Rewrite) |
+| `/api/ficha/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com:9004/<*>` | 200 (Rewrite) |
+| `/api/analitico/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com:9005/<*>` | 200 (Rewrite) |
+| `/api/usuarios/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com:9006/<*>` | 200 (Rewrite) |
+| `/<*>` | `/index.html` | 200 (Rewrite) |
+
+> Para que esto funcione, el **ALB necesita un listener por cada puerto**
+> (9001 a 9006), cada uno apuntando a su target group. Eso lo configura
+> @Brisseth-raton.
+
+### Modo directo
+
+Para desarrollar contra microservicios corriendo en tu propia maquina:
+
+```
+VITE_API_MODE=direct
+VITE_API_BASE_URL=http://localhost
+```
+
+Ahi las URLs se arman como `http://localhost:9001/residentes`, sin proxy.
+
 ## Variables de entorno
 
 Copiar [.env.example](.env.example) a `.env` y completar.
@@ -107,7 +156,8 @@ Copiar [.env.example](.env.example) a `.env` y completar.
 | Variable | Descripcion | Ejemplo |
 |----------|-------------|---------|
 | `VITE_APP_NAME` | Nombre de la app | `web-condominio` |
-| `VITE_API_BASE_URL` | URL del balanceador de las VM de produccion | `http://<ip-balanceador>` |
+| `VITE_API_MODE` | `proxy` (Amplify) o `direct` (desarrollo local) | `proxy` |
+| `VITE_API_BASE_URL` | URL del balanceador, sin puerto ni barra final | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com` |
 | `VITE_PORT_RESIDENTES` | Puerto publicado de ms-residentes | `9001` |
 | `VITE_PORT_PAGOS` | Puerto publicado de ms-pagos | `9002` |
 | `VITE_PORT_INCIDENCIAS` | Puerto publicado de ms-incidencias | `9003` |
