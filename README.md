@@ -118,22 +118,48 @@ proxy, asi que el codigo no cambia entre un entorno y el otro.
 
 ### Reglas que hay que cargar en Amplify
 
-En la consola: **App settings > Rewrites and redirects**. El orden importa: las
-reglas de `/api/` van **antes** que la de la SPA.
+En la consola: **App settings > Rewrites and redirects**.
+
+El ALB enruta **por ruta** sobre el puerto 80 (no hay listener por puerto), asi
+que todos los targets apuntan al mismo host y lo unico que cambia es el prefijo
+que se quita. Las reglas de `/api/` van **antes** que la de la SPA.
 
 | Source address | Target address | Type |
 |----------------|----------------|------|
-| `/api/residentes/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com:9001/<*>` | 200 (Rewrite) |
-| `/api/pagos/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com:9002/<*>` | 200 (Rewrite) |
-| `/api/incidencias/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com:9003/<*>` | 200 (Rewrite) |
-| `/api/ficha/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com:9004/<*>` | 200 (Rewrite) |
-| `/api/analitico/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com:9005/<*>` | 200 (Rewrite) |
-| `/api/usuarios/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com:9006/<*>` | 200 (Rewrite) |
+| `/api/residentes/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com/<*>` | 200 (Rewrite) |
+| `/api/usuarios/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com/<*>` | 200 (Rewrite) |
+| `/api/pagos/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com/<*>` | 200 (Rewrite) |
+| `/api/incidencias/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com/<*>` | 200 (Rewrite) |
+| `/api/ficha/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com/<*>` | 200 (Rewrite) |
+| `/api/analitico/<*>` | `http://alb-condominio-678852222.us-east-1.elb.amazonaws.com/<*>` | 200 (Rewrite) |
 | `/<*>` | `/index.html` | 200 (Rewrite) |
 
-> Para que esto funcione, el **ALB necesita un listener por cada puerto**
-> (9001 a 9006), cada uno apuntando a su target group. Eso lo configura
-> @Brisseth-raton.
+Como funciona, con un ejemplo: el frontend pide `/api/usuarios/auth/login`, la
+regla le quita el prefijo `/api/usuarios/` y reenvia a
+`http://alb.../auth/login`. El ALB ve la ruta `/auth/*` y la manda a
+`tg-usuarios`. El navegador solo hablo HTTPS con Amplify.
+
+Reglas de ruta que hoy tiene el ALB:
+
+| Prioridad | Rutas | Target group |
+|-----------|-------|--------------|
+| 10 | `/residentes*`, `/unidades*`, `/edificios*` | `tg-residentes` |
+| 20 | `/usuarios*`, `/auth*` | `tg-usuarios` |
+
+Los microservicios que todavia no estan desplegados (`pagos`, `incidencias`,
+`ficha`, `analitico`) van a caer en la regla por defecto hasta que
+@Brisseth-raton les agregue la suya.
+
+### Variables de entorno en Amplify
+
+En **App settings > Environment variables**:
+
+```
+VITE_API_MODE=proxy
+```
+
+`VITE_API_BASE_URL` no se usa en produccion con el modo proxy. Si quedo en
+`http://0.0.0.0`, se puede borrar.
 
 ### Modo directo
 
