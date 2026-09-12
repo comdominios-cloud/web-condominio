@@ -1,18 +1,19 @@
-import { useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../auth/AuthContext.jsx';
-import AuthAside from '../../components/AuthAside.jsx';
+import ServiceStatus from "../../components/ServiceStatus.jsx";
+import { useState } from "react";
+import { Link, Navigate, useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/AuthContext.jsx";
+import AuthAside from "../../components/AuthAside.jsx";
 
-import { passwordError } from '../../utils/domain.js';
+import { passwordError } from "../../utils/domain.js";
 
 export default function Register() {
   const { register, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    email: '',
-    password: '',
-    confirmacion: '',
+    email: "",
+    password: "",
+    confirmacion: "",
   });
 
   const [error, setError] = useState(null);
@@ -20,7 +21,8 @@ export default function Register() {
 
   if (isAuthenticated) return <Navigate to="/" replace />;
 
-  const cambiar = (campo) => (event) => setForm({ ...form, [campo]: event.target.value });
+  const cambiar = (campo) => (event) =>
+    setForm({ ...form, [campo]: event.target.value });
 
   const enviar = async (event) => {
     event.preventDefault();
@@ -32,7 +34,7 @@ export default function Register() {
     }
 
     if (form.password !== form.confirmacion) {
-      setError('Las contraseñas no coinciden.');
+      setError("Las contraseñas no coinciden.");
       return;
     }
 
@@ -41,9 +43,9 @@ export default function Register() {
     try {
       await register({ email: form.email, password: form.password });
 
-      navigate('/mi-perfil', { replace: true });
+      navigate("/mi-perfil", { replace: true });
     } catch (err) {
-      setError(err.message || 'No se pudo crear la cuenta.');
+      setError(err.message || "No se pudo crear la cuenta.");
     } finally {
       setEnviando(false);
     }
@@ -52,13 +54,13 @@ export default function Register() {
   return (
     <div className="auth">
       <AuthAside
-        claim={['Crea tu cuenta', 'y toma el control']}
+        claim={["Crea tu cuenta", "y toma el control"]}
         lead="Crea tu acceso personal y completa tu ficha para consultar la información de tu unidad."
         points={[
-          'Tu perfil conectado al padrón de residentes',
-          'Historial de cuotas y pagos de tu unidad',
-          'Consulta del estado de tus incidencias',
-          'Consulta de tus reservas de áreas comunes',
+          "Tu perfil conectado al padrón de residentes",
+          "Historial de cuotas y pagos de tu unidad",
+          "Consulta del estado de tus incidencias",
+          "Consulta de tus reservas de áreas comunes",
         ]}
       />
 
@@ -68,9 +70,18 @@ export default function Register() {
           <p>Completa tus datos para unirte a la plataforma.</p>
 
           <hr className="auth-sep" />
+          <ServiceStatus
+            sessionProbe
+            service="usuarios"
+            checks={[{ path: "/auth/me" }]}
+          />
 
           {error ? (
-            <div className="alert alert--error" style={{ marginBottom: 16 }} role="alert">
+            <div
+              className="alert alert--error"
+              style={{ marginBottom: 16 }}
+              role="alert"
+            >
               {error}
             </div>
           ) : null}
@@ -84,14 +95,15 @@ export default function Register() {
               autoComplete="email"
               placeholder="tucorreo@condominio.com"
               value={form.email}
-              onChange={cambiar('email')}
+              onChange={cambiar("email")}
               required
             />
           </div>
 
           <div className="alert alert--info" style={{ marginBottom: 16 }}>
-            Crearás una cuenta de residente. Después completarás tus datos y tu unidad para aparecer
-            en el padrón. Las cuentas de administración las habilita el responsable del condominio.
+            Crearás una cuenta de residente. Después completarás tus datos y tu
+            unidad para aparecer en el padrón. Las cuentas de administración las
+            habilita el responsable del condominio.
           </div>
 
           <div className="field">
@@ -105,7 +117,7 @@ export default function Register() {
               autoComplete="new-password"
               placeholder="Mínimo 8 caracteres"
               value={form.password}
-              onChange={cambiar('password')}
+              onChange={cambiar("password")}
               required
             />
           </div>
@@ -119,7 +131,7 @@ export default function Register() {
               autoComplete="new-password"
               placeholder="••••••••"
               value={form.confirmacion}
-              onChange={cambiar('confirmacion')}
+              onChange={cambiar("confirmacion")}
               required
             />
           </div>
@@ -131,7 +143,7 @@ export default function Register() {
             disabled={enviando}
           >
             {enviando ? <span className="spinner spinner--sm" /> : null}
-            {enviando ? 'Creando cuenta...' : 'Crear cuenta'}
+            {enviando ? "Creando cuenta..." : "Crear cuenta"}
           </button>
 
           <p className="auth-switch">

@@ -47,3 +47,14 @@ La base local se actualizó por fast-forward a `da64e7f` antes de editar. La ló
 ## Publicación
 
 Publicar los cambios en el fork `alxgr-08/web-condominio` conectado a Amplify, no asumir que `origin` apunta a ese fork (la copia local apunta al repositorio del equipo). Conservar `VITE_API_MODE=path` y la URL HTTPS de API Gateway. Tras desplegar, probar con una cuenta RESIDENTE y una cuenta que el servidor realmente devuelva como ADMIN.
+
+## Diagnóstico de conexiones y propietarios
+
+- Cada pantalla muestra el microservicio y el resultado de sus consultas: sin comprobar, comprobando, conectado o con un problema. Al pulsar muestra ruta, resultado HTTP y hora. Comprobar conexión solo ejecuta GET; no repite altas, pagos ni otras escrituras. La comprobación no sustituye Actualizar para recargar las tablas. El estado corresponde a la última consulta de esa ruta en la sesión, no garantiza la salud completa del servidor.
+- Antes de iniciar sesión, la prueba de ms-usuarios admite el 401 esperado de /auth/me como señal de que responde; no significa autenticación correcta.
+- El tipo PROPIETARIO de la ficha habilita Mi propiedad y Mi unidad, con edificio, piso, superficie y enlace al estado de cuenta. INQUILINO conserva Mi hogar y las consultas personales. Ambos siguen siendo RESIDENTE ante la API; ser propietario no concede permisos ADMIN ni acceso a vecinos. La propiedad sigue requiriendo validación del backend, como se indica arriba.
+- Cuotas y pagos se cargan por separado: un error en pagos no oculta las cuotas disponibles. Con datos incompletos no se presenta un saldo cero ficticio. Incidencias y reservas muestran error y reintento cuando falla la API, sin inventar registros.
+
+En la comprobación externa del 11 de septiembre de 2026, GET /cuotas?unidad_id=1, /pagos?unidad_id=1, /incidencias y /reservas devolvieron HTTP 404 con HTML de nginx/1.31.5; sus preflight OPTIONS devolvieron 405. Esto requiere revisar el destino y las rutas del listener/integración, el despliegue de ms-pagos/ms-incidencias y la atención de OPTIONS/CORS. No demuestra por sí solo qué componente está mal configurado. El frontend no puede reparar esas respuestas de infraestructura. No se cambió AWS.
+
+Las pruebas de navegador incluyen propietario sin privilegios administrativos, fallo parcial de pagos, comprobación manual y recuperación, y errores de red en incidencias/reservas que no se confunden con listas vacías. Usan API simuladas; no certifican la disponibilidad de los servicios reales.

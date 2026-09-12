@@ -1,3 +1,4 @@
+import { clearConnections } from '../api/connectionStatus.js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { TOKEN_STORAGE_KEY, USER_STORAGE_KEY } from '../api/config.js';
 import { iniciarSesion, registrar, miCuenta } from '../api/usuarios.js';
@@ -98,6 +99,7 @@ export function AuthProvider({ children }) {
   }, [token, sessionAttempt]);
 
   const persist = useCallback((nextToken, nextUser) => {
+    clearConnections();
     setToken(nextToken);
     setUser(nextUser);
     writeStored(TOKEN_STORAGE_KEY, nextToken);

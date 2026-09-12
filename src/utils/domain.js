@@ -66,3 +66,6 @@ export function passwordError(password) {
     return 'La contraseña no puede superar 72 bytes (algunos símbolos ocupan más de uno).';
   return null;
 }
+
+export const isOwner = resident => String(resident?.tipo || '').toUpperCase() === 'PROPIETARIO';
+export const residenceLabel = resident => isOwner(resident) ? 'Propietario' : resident?.tipo === 'INQUILINO' ? 'Residente · Inquilino' : 'Residente';

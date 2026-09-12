@@ -1,3 +1,4 @@
+import MiUnidad from './pages/Residentes/MiUnidad.jsx';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext.jsx';
 import Layout from './components/Layout.jsx';
@@ -61,6 +62,7 @@ export default function App() {
               path="/mi-perfil"
               element={<RolePage admin={<Navigate to="/" replace />} resident={<MiPerfil />} />}
             />
+            <Route path="/mi-unidad" element={<RolePage admin={<Navigate to="/" replace />} resident={<MiUnidad />} />} />
             <Route path="/pagos" element={<Pagos />} />
             <Route
               path="/incidencias"

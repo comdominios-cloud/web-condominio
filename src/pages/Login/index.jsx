@@ -1,20 +1,22 @@
-import { useState } from 'react';
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../auth/AuthContext.jsx';
-import AuthAside from '../../components/AuthAside.jsx';
+import ServiceStatus from "../../components/ServiceStatus.jsx";
+import { useState } from "react";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/AuthContext.jsx";
+import AuthAside from "../../components/AuthAside.jsx";
 
 export default function Login() {
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState(null);
   const [enviando, setEnviando] = useState(false);
 
   if (isAuthenticated) return <Navigate to="/" replace />;
 
-  const cambiar = (campo) => (event) => setForm({ ...form, [campo]: event.target.value });
+  const cambiar = (campo) => (event) =>
+    setForm({ ...form, [campo]: event.target.value });
 
   const enviar = async (event) => {
     event.preventDefault();
@@ -23,9 +25,9 @@ export default function Login() {
 
     try {
       await login(form);
-      navigate(location.state?.from || '/', { replace: true });
+      navigate(location.state?.from || "/", { replace: true });
     } catch (err) {
-      setError(err.message || 'No se pudo iniciar sesión.');
+      setError(err.message || "No se pudo iniciar sesión.");
     } finally {
       setEnviando(false);
     }
@@ -34,13 +36,13 @@ export default function Login() {
   return (
     <div className="auth">
       <AuthAside
-        claim={['Administracion eficiente,', 'vecinos tranquilos']}
+        claim={["Administracion eficiente,", "vecinos tranquilos"]}
         lead="condominios.net centraliza residentes, cuotas, incidencias y reservas de tu comunidad en una sola plataforma."
         points={[
-          'Directorio de residentes y unidades siempre actualizado',
-          'Cuotas emitidas y pagos registrados en linea',
-          'Incidencias y reservas con seguimiento transparente',
-          'Tableros analiticos sobre la data historica',
+          "Directorio de residentes y unidades siempre actualizado",
+          "Cuotas emitidas y pagos registrados en linea",
+          "Incidencias y reservas con seguimiento transparente",
+          "Tableros analiticos sobre la data historica",
         ]}
       />
 
@@ -50,9 +52,18 @@ export default function Login() {
           <p>Ingresa con la cuenta que registraste en tu condominio.</p>
 
           <hr className="auth-sep" />
+          <ServiceStatus
+            sessionProbe
+            service="usuarios"
+            checks={[{ path: "/auth/me" }]}
+          />
 
           {error ? (
-            <div className="alert alert--error" style={{ marginBottom: 16 }} role="alert">
+            <div
+              className="alert alert--error"
+              style={{ marginBottom: 16 }}
+              role="alert"
+            >
               {error}
             </div>
           ) : null}
@@ -66,7 +77,7 @@ export default function Login() {
               autoComplete="email"
               placeholder="tucorreo@condominio.com"
               value={form.email}
-              onChange={cambiar('email')}
+              onChange={cambiar("email")}
               required
             />
           </div>
@@ -80,7 +91,7 @@ export default function Login() {
               autoComplete="current-password"
               placeholder="••••••••"
               value={form.password}
-              onChange={cambiar('password')}
+              onChange={cambiar("password")}
               required
             />
           </div>
@@ -92,7 +103,7 @@ export default function Login() {
             disabled={enviando}
           >
             {enviando ? <span className="spinner spinner--sm" /> : null}
-            {enviando ? 'Verificando...' : 'Entrar'}
+            {enviando ? "Verificando..." : "Entrar"}
           </button>
 
           <p className="auth-switch">

@@ -1,9 +1,10 @@
+import PageConnections from './PageConnections.jsx';
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { isApiConfigured } from '../api/config.js';
 import { initials } from '../utils/format.js';
-import { isAdmin } from '../utils/domain.js';
+import { isAdmin, isOwner, residenceLabel } from '../utils/domain.js';
 import { useResident } from '../auth/ResidentContext.jsx';
 import { fullName } from '../utils/domain.js';
 import Brand from './Brand.jsx';
@@ -61,15 +62,17 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const admin = isAdmin(user);
   const profile = useResident();
+  const owner = isOwner(profile.data);
   const displayName = profile.data ? fullName(profile.data) : user?.nombre || user?.email;
   const groups = admin
     ? NAV_GROUPS
     : [
         {
-          label: 'Mi hogar',
+          label: owner ? 'Mi propiedad' : 'Mi hogar',
           items: [
             { to: '/', label: 'Mi resumen', icon: <IconDashboard />, end: true },
             { to: '/mi-perfil', label: 'Mi perfil', icon: <IconUsers /> },
+            ...(owner ? [{ to: '/mi-unidad', label: 'Mi unidad', icon: <IconDashboard /> }] : []),
             { to: '/pagos', label: 'Mis cuotas y pagos', icon: <IconMoney /> },
             { to: '/incidencias', label: 'Mis incidencias', icon: <IconAlert /> },
             { to: '/reservas', label: 'Mis reservas', icon: <IconCalendar /> },
@@ -155,7 +158,7 @@ export default function Layout() {
                 {displayName || 'Usuario'}
               </div>
               <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>
-                {admin ? 'Administrador' : 'Residente'}
+                {admin ? 'Administrador' : residenceLabel(profile.data)}
               </div>
             </div>
             <span className="avatar">{initials(displayName)}</span>
@@ -172,6 +175,7 @@ export default function Layout() {
           </div>
         )}
 
+        <PageConnections />
         <Outlet />
 
         <div style={{ flex: 1 }} />

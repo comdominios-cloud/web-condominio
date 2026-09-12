@@ -1,51 +1,61 @@
-import { useState } from 'react';
-import { request } from '../../api/http.js';
-import { listarCuotas, listarPagos } from '../../api/pagos.js';
-import { listarUnidades } from '../../api/residentes.js';
-import { useAuth } from '../../auth/AuthContext.jsx';
-import { useResident } from '../../auth/ResidentContext.jsx';
-import { useApi } from '../../hooks/useApi.js';
-import { ResidentGate } from '../Residentes/MiPerfil.jsx';
-import { balance, isAdmin, paymentRecords, unitRecords, unitLabel } from '../../utils/domain.js';
-import { date, money, matches } from '../../utils/format.js';
-import { Loading, ErrorState } from '../../components/States.jsx';
-import DataTable from '../../components/DataTable.jsx';
-import Badge from '../../components/Badge.jsx';
+import { useState } from "react";
+import { request } from "../../api/http.js";
+import { listarCuotas, listarPagos } from "../../api/pagos.js";
+import { listarUnidades } from "../../api/residentes.js";
+import { useAuth } from "../../auth/AuthContext.jsx";
+import { useResident } from "../../auth/ResidentContext.jsx";
+import { useApi } from "../../hooks/useApi.js";
+import { ResidentGate } from "../Residentes/MiPerfil.jsx";
+import {
+  balance,
+  isAdmin,
+  paymentRecords,
+  unitRecords,
+  unitLabel,
+} from "../../utils/domain.js";
+import { date, money, matches } from "../../utils/format.js";
+import { Loading, ErrorState } from "../../components/States.jsx";
+import DataTable from "../../components/DataTable.jsx";
+import Badge from "../../components/Badge.jsx";
 
 function EntryForm({ kind, quotas, units, onSaved, onCancel }) {
   const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const [form, setForm] = useState({
-    unidadId: '',
-    cuotaId: '',
-    periodo: '',
-    concepto: '',
-    monto: '',
+    unidadId: "",
+    cuotaId: "",
+    periodo: "",
+    concepto: "",
+    monto: "",
     fechaEmision: today,
-    fechaVencim: '',
-    referencia: '',
-    medioPago: 'TRANSFERENCIA',
+    fechaVencim: "",
+    referencia: "",
+    medioPago: "TRANSFERENCIA",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const cuota = kind === 'cuota';
-  const change = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  const cuota = kind === "cuota";
+  const change = (e) =>
+    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   async function save(e) {
     e.preventDefault();
     if (busy) return;
-    setError('');
+    setError("");
     setBusy(true);
     try {
       if (cuota && form.fechaVencim < form.fechaEmision)
-        throw new Error('El vencimiento no puede ser anterior a la emisión.');
-      if (cuota && !form.concepto.trim()) throw new Error('Escribe el concepto de la cuota.');
+        throw new Error("El vencimiento no puede ser anterior a la emisión.");
+      if (cuota && !form.concepto.trim())
+        throw new Error("Escribe el concepto de la cuota.");
       if (!cuota && !form.referencia.trim())
-        throw new Error('Incluye una referencia para identificar el pago real.');
+        throw new Error(
+          "Incluye una referencia para identificar el pago real.",
+        );
       const amount = Number(form.monto);
       if (!Number.isFinite(amount) || amount <= 0)
-        throw new Error('Ingresa un monto mayor que cero.');
-      await request('pagos', cuota ? '/cuotas' : '/pagos', {
-        method: 'POST',
+        throw new Error("Ingresa un monto mayor que cero.");
+      await request("pagos", cuota ? "/cuotas" : "/pagos", {
+        method: "POST",
         body: cuota
           ? {
               unidadId: Number(form.unidadId),
@@ -69,7 +79,7 @@ function EntryForm({ kind, quotas, units, onSaved, onCancel }) {
       setBusy(false);
     }
   }
-  const input = (name, label, type = 'text', extra = {}) => (
+  const input = (name, label, type = "text", extra = {}) => (
     <label className="field" key={name}>
       {label}
       <input
@@ -84,12 +94,16 @@ function EntryForm({ kind, quotas, units, onSaved, onCancel }) {
     </label>
   );
   return (
-    <form className="card card-body stack" onSubmit={save} style={{ marginBottom: 24 }}>
-      <h2>{cuota ? 'Emitir cuota' : 'Registrar pago recibido'}</h2>
+    <form
+      className="card card-body stack"
+      onSubmit={save}
+      style={{ marginBottom: 24 }}
+    >
+      <h2>{cuota ? "Emitir cuota" : "Registrar pago recibido"}</h2>
       {!cuota && (
         <p>
-          Registra únicamente un pago recibido y verificado. Esta acción actualiza la contabilidad;
-          no realiza un cobro bancario.
+          Registra únicamente un pago recibido y verificado. Esta acción
+          actualiza la contabilidad; no realiza un cobro bancario.
         </p>
       )}
       {error && (
@@ -118,10 +132,10 @@ function EntryForm({ kind, quotas, units, onSaved, onCancel }) {
                 ))}
               </select>
             </label>
-            {input('periodo', 'Periodo', 'month')}
-            {input('concepto', 'Concepto', 'text', { maxLength: 160 })}
-            {input('fechaEmision', 'Fecha de emisión', 'date')}
-            {input('fechaVencim', 'Vencimiento', 'date')}
+            {input("periodo", "Periodo", "month")}
+            {input("concepto", "Concepto", "text", { maxLength: 160 })}
+            {input("fechaEmision", "Fecha de emisión", "date")}
+            {input("fechaVencim", "Vencimiento", "date")}
           </>
         ) : (
           <>
@@ -137,15 +151,21 @@ function EntryForm({ kind, quotas, units, onSaved, onCancel }) {
               >
                 <option value="">Seleccionar cuota</option>
                 {quotas
-                  .filter((q) => !['PAGADA', 'ANULADA', 'CANCELADA'].includes(q.estado))
+                  .filter(
+                    (q) =>
+                      !["PAGADA", "ANULADA", "CANCELADA"].includes(q.estado),
+                  )
                   .map((q) => (
                     <option key={q.id} value={q.id}>
-                      #{q.id} · Unidad {q.unidadId ?? q.unidad_id} · {q.concepto} · {money(q.monto)}
+                      #{q.id} · Unidad {q.unidadId ?? q.unidad_id} ·{" "}
+                      {q.concepto} · {money(q.monto)}
                     </option>
                   ))}
               </select>
             </label>
-            {input('referencia', 'Referencia / comprobante', 'text', { maxLength: 80 })}
+            {input("referencia", "Referencia / comprobante", "text", {
+              maxLength: 80,
+            })}
             <label className="field">
               Medio de pago
               <select
@@ -155,22 +175,29 @@ function EntryForm({ kind, quotas, units, onSaved, onCancel }) {
                 value={form.medioPago}
                 onChange={change}
               >
-                {['EFECTIVO', 'TRANSFERENCIA', 'TARJETA', 'YAPE', 'PLIN'].map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
+                {["EFECTIVO", "TRANSFERENCIA", "TARJETA", "YAPE", "PLIN"].map(
+                  (m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ),
+                )}
               </select>
             </label>
           </>
         )}
-        {input('monto', 'Monto (S/)', 'number', { min: '0.01', step: '0.01' })}
+        {input("monto", "Monto (S/)", "number", { min: "0.01", step: "0.01" })}
       </div>
       <div className="toolbar">
         <button className="btn btn--primary" disabled={busy}>
-          {busy ? 'Guardando…' : 'Confirmar registro'}
+          {busy ? "Guardando…" : "Confirmar registro"}
         </button>
-        <button type="button" className="btn btn--ghost" disabled={busy} onClick={onCancel}>
+        <button
+          type="button"
+          className="btn btn--ghost"
+          disabled={busy}
+          onClick={onCancel}
+        >
           Cancelar
         </button>
       </div>
@@ -183,58 +210,103 @@ export default function EstadoCuenta() {
   const admin = isAdmin(user);
   const profile = useResident();
   const resident = profile.data;
-  const enabled = admin || Boolean(resident?.activo && resident?.unidad_id != null);
+  const enabled =
+    admin || Boolean(resident?.activo && resident?.unidad_id != null);
   const units = useApi(listarUnidades, [], { enabled: admin, initialData: [] });
   const state = useApi(
     async () => {
       const params = admin ? undefined : { unidad_id: resident.unidad_id };
-      const [allQuotas, allPayments] = await Promise.all([
+      const [q, p] = await Promise.allSettled([
         listarCuotas(params),
         listarPagos(params),
       ]);
-      const quotas = admin ? allQuotas : unitRecords(allQuotas, resident.unidad_id);
-      return { quotas, payments: admin ? allPayments : paymentRecords(allPayments, quotas) };
+      const quotasError = q.status === "rejected" ? q.reason : null;
+      const quotas = quotasError
+        ? []
+        : admin
+          ? q.value
+          : unitRecords(q.value, resident.unidad_id);
+      const paymentsError =
+        p.status === "rejected"
+          ? p.reason
+          : !admin && quotasError
+            ? new Error(
+                "No se pueden asociar los pagos a tu unidad mientras la consulta de cuotas falle.",
+              )
+            : null;
+      return {
+        quotas,
+        payments: paymentsError
+          ? []
+          : admin
+            ? p.value
+            : paymentRecords(p.value, quotas),
+        quotasError,
+        paymentsError,
+      };
     },
     [admin, resident?.id, resident?.unidad_id],
     { enabled },
   );
-  const [tab, setTab] = useState('cuotas');
-  const [filter, setFilter] = useState('');
+  const [tab, setTab] = useState("cuotas");
+  const [filter, setFilter] = useState("");
   const [entry, setEntry] = useState(null);
-  const [notice, setNotice] = useState('');
+  const [notice, setNotice] = useState("");
   const quotas = state.data?.quotas || [];
   const payments = state.data?.payments || [];
-  const labels = new Map((units.data || []).map((u) => [String(u.id), unitLabel(u)]));
+  const quotasError = state.data?.quotasError;
+  const paymentsError = state.data?.paymentsError;
+  const incomplete = Boolean(quotasError || paymentsError);
+  const labels = new Map(
+    (units.data || []).map((u) => [String(u.id), unitLabel(u)]),
+  );
   const quotaColumns = [
-    { key: 'concepto', header: 'Concepto', render: (q) => q.concepto },
+    { key: "concepto", header: "Concepto", render: (q) => q.concepto },
     {
-      key: 'unidad',
-      header: 'Unidad',
+      key: "unidad",
+      header: "Unidad",
       render: (q) =>
-        labels.get(String(q.unidadId ?? q.unidad_id)) || unitLabel(q.unidadId ?? q.unidad_id),
+        labels.get(String(q.unidadId ?? q.unidad_id)) ||
+        unitLabel(q.unidadId ?? q.unidad_id),
     },
-    { key: 'periodo', header: 'Periodo', render: (q) => q.periodo },
+    { key: "periodo", header: "Periodo", render: (q) => q.periodo },
     {
-      key: 'vencimiento',
-      header: 'Vencimiento',
+      key: "vencimiento",
+      header: "Vencimiento",
       render: (q) => date(q.fechaVencim ?? q.fecha_vencimiento),
     },
-    { key: 'monto', header: 'Monto', render: (q) => money(q.monto) },
-    { key: 'estado', header: 'Estado', render: (q) => <Badge value={q.estado} /> },
+    { key: "monto", header: "Monto", render: (q) => money(q.monto) },
+    {
+      key: "estado",
+      header: "Estado",
+      render: (q) => <Badge value={q.estado} />,
+    },
   ];
   const paymentColumns = [
-    { key: 'ref', header: 'Referencia', render: (p) => p.referencia || `Pago #${p.id}` },
-    { key: 'cuota', header: 'Cuota', render: (p) => `#${p.cuotaId ?? p.cuota_id}` },
-    { key: 'fecha', header: 'Fecha', render: (p) => date(p.fechaPago ?? p.fecha_pago) },
     {
-      key: 'monto',
-      header: 'Monto pagado',
+      key: "ref",
+      header: "Referencia",
+      render: (p) => p.referencia || `Pago #${p.id}`,
+    },
+    {
+      key: "cuota",
+      header: "Cuota",
+      render: (p) => `#${p.cuotaId ?? p.cuota_id}`,
+    },
+    {
+      key: "fecha",
+      header: "Fecha",
+      render: (p) => date(p.fechaPago ?? p.fecha_pago),
+    },
+    {
+      key: "monto",
+      header: "Monto pagado",
       render: (p) => money(p.montoPagado ?? p.monto_pagado ?? p.monto),
     },
     {
-      key: 'medio',
-      header: 'Medio',
-      render: (p) => p.medioPago || p.medio_pago || 'No especificado',
+      key: "medio",
+      header: "Medio",
+      render: (p) => p.medioPago || p.medio_pago || "No especificado",
     },
   ];
   const content = (
@@ -253,41 +325,63 @@ export default function EstadoCuenta() {
           <>
             <div className="grid grid--2" style={{ marginBottom: 24 }}>
               <section className="card card-body">
-                <p>Saldo pendiente{admin ? ' del condominio' : ' de mi unidad'}</p>
-                <h2>{money(balance(quotas, payments))}</h2>
                 <p>
-                  {quotas.length} {quotas.length === 1 ? 'cuota registrada' : 'cuotas registradas'}
+                  Saldo pendiente{admin ? " del condominio" : " de mi unidad"}
+                </p>
+                <h2>
+                  {incomplete
+                    ? "No disponible"
+                    : money(balance(quotas, payments))}
+                </h2>
+                <p>
+                  {quotasError
+                    ? "No se pudo consultar las cuotas."
+                    : `${quotas.length} cuotas registradas`}
                 </p>
               </section>
               <section className="card card-body">
                 <p>Pagos registrados</p>
                 <h2>
-                  {money(
-                    payments.reduce(
-                      (s, p) => s + Number(p.montoPagado ?? p.monto_pagado ?? p.monto ?? 0),
-                      0,
-                    ),
-                  )}
+                  {paymentsError
+                    ? "No disponible"
+                    : money(
+                        payments.reduce(
+                          (s, p) =>
+                            s +
+                            Number(
+                              p.montoPagado ?? p.monto_pagado ?? p.monto ?? 0,
+                            ),
+                          0,
+                        ),
+                      )}
                 </h2>
                 <p>
-                  {payments.length} {payments.length === 1 ? 'movimiento' : 'movimientos'}
+                  {paymentsError
+                    ? "No se pudo consultar los pagos."
+                    : `${payments.length} movimientos`}
                 </p>
               </section>
             </div>
-            {admin && (
+            {admin && !incomplete && (
               <div className="toolbar" style={{ marginBottom: 20 }}>
-                <button className="btn btn--primary" onClick={() => setEntry('cuota')}>
+                <button
+                  className="btn btn--primary"
+                  onClick={() => setEntry("cuota")}
+                >
                   Emitir cuota
                 </button>
-                <button className="btn btn--ghost" onClick={() => setEntry('pago')}>
+                <button
+                  className="btn btn--ghost"
+                  onClick={() => setEntry("pago")}
+                >
                   Registrar pago recibido
                 </button>
               </div>
             )}
             {entry &&
-              (entry === 'cuota' && units.error ? (
+              (entry === "cuota" && units.error ? (
                 <ErrorState error={units.error} onRetry={units.reload} />
-              ) : entry === 'cuota' && units.loading ? (
+              ) : entry === "cuota" && units.loading ? (
                 <Loading label="Cargando unidades…" />
               ) : (
                 <EntryForm
@@ -298,7 +392,7 @@ export default function EstadoCuenta() {
                   onCancel={() => setEntry(null)}
                   onSaved={() => {
                     setEntry(null);
-                    setNotice('Operación guardada.');
+                    setNotice("Operación guardada.");
                     state.reload();
                   }}
                 />
@@ -306,13 +400,13 @@ export default function EstadoCuenta() {
             <section className="card">
               <div className="card-head">
                 <div className="toolbar">
-                  {['cuotas', 'pagos'].map((key) => (
+                  {["cuotas", "pagos"].map((key) => (
                     <button
                       key={key}
-                      className={`btn btn--sm ${tab === key ? 'btn--primary' : 'btn--ghost'}`}
+                      className={`btn btn--sm ${tab === key ? "btn--primary" : "btn--ghost"}`}
                       onClick={() => setTab(key)}
                     >
-                      {key === 'cuotas' ? 'Cuotas' : 'Pagos'}
+                      {key === "cuotas" ? "Cuotas" : "Pagos"}
                     </button>
                   ))}
                 </div>
@@ -326,14 +420,18 @@ export default function EstadoCuenta() {
                 />
               </div>
               <DataTable
-                columns={tab === 'cuotas' ? quotaColumns : paymentColumns}
-                rows={(tab === 'cuotas' ? quotas : payments).filter((r) => matches(r, filter))}
+                error={tab === "cuotas" ? quotasError : paymentsError}
+                onRetry={state.reload}
+                columns={tab === "cuotas" ? quotaColumns : paymentColumns}
+                rows={(tab === "cuotas" ? quotas : payments).filter((r) =>
+                  matches(r, filter),
+                )}
                 rowKey={(r) => r.id}
                 emptyTitle="No hay movimientos"
                 emptyText={
                   filter
-                    ? 'Prueba otra búsqueda.'
-                    : 'Los movimientos aparecerán cuando administración los registre.'
+                    ? "Prueba otra búsqueda."
+                    : "Los movimientos aparecerán cuando administración los registre."
                 }
               />
             </section>
@@ -342,8 +440,8 @@ export default function EstadoCuenta() {
       )}
       {!admin && (
         <p className="cell-muted" style={{ marginTop: 20 }}>
-          Este estado de cuenta corresponde a tu unidad. Coordina el pago con administración; aquí
-          verás su registro cuando sea confirmado.
+          Este estado de cuenta corresponde a tu unidad. Coordina el pago con
+          administración; aquí verás su registro cuando sea confirmado.
         </p>
       )}
     </>
@@ -352,11 +450,11 @@ export default function EstadoCuenta() {
     <div className="page">
       <div className="page-head">
         <div>
-          <h1>{admin ? 'Cuotas y pagos' : 'Mis cuotas y pagos'}</h1>
+          <h1>{admin ? "Cuotas y pagos" : "Mis cuotas y pagos"}</h1>
           <p>
             {admin
-              ? 'Emite cuotas y registra los pagos recibidos.'
-              : 'Consulta los movimientos y vencimientos de tu unidad.'}
+              ? "Emite cuotas y registra los pagos recibidos."
+              : "Consulta los movimientos y vencimientos de tu unidad."}
           </p>
         </div>
         {enabled && (
