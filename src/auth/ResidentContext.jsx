@@ -13,7 +13,8 @@ export function ResidentProvider({ children }) {
       if (user.residente_id != null) return obtenerResidente(user.residente_id);
       // Current accounts API has no endpoint to attach an existing account to a resident.
       // Fall back only to a unique exact email, never to a name, unit or first row.
-      const resident = selectResident(await listarResidentes(), user);
+      if (!user.email?.trim()) return null;
+      const resident = selectResident(await listarResidentes({ email: user.email }), user);
       return resident ? obtenerResidente(resident.id) : null;
     },
     [user?.id, user?.email, user?.residente_id],

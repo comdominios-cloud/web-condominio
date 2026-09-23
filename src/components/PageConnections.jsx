@@ -16,7 +16,7 @@ export default function PageConnections() {
     groups.residentes = [
       {
         path: id != null ? `/residentes/${id}` : "/residentes",
-        params: { limit: 200 },
+        params: id != null ? undefined : { email: user?.email, limit: 200 },
       },
     ];
   if (admin && (pathname === "/" || pathname === "/residentes"))
